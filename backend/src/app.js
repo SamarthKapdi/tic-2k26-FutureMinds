@@ -116,11 +116,11 @@ const startServer = async () => {
         await initializeDatabase();
 
         app.listen(PORT, () => {
-            console.log(`SAHYOG API Server Running.     
-        Port:        ${PORT}                        
-        Environment: ${process.env.NODE_ENV}
-        API:         http://localhost:${PORT}/api   
-      `);
+            console.log(`SAHYOG API Server Running :-     
+                        Port:        ${PORT}                        
+                        Environment: ${process.env.NODE_ENV}
+                        API:         http://localhost:${PORT}/api   
+                    `);
         });
     } catch (error) {
         console.error('Failed to start server:', error);
