@@ -79,6 +79,5 @@ It has the potential to save lives, reduce fraud, and bring efficiency to critic
 
 ## Contributors
 - Nikhil Soni
-
-Team
+  
 Team FutureMinds
