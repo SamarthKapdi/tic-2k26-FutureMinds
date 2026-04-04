@@ -1,66 +1,85 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Heart, HandCoins, Search, MapPin, Shield, TrendingUp } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useSocket } from '../context/SocketContext';
-import { StatCard, Card, Badge, Spinner } from '../components/ui';
-import { bloodAPI, fundAPI, missingAPI } from '../lib/api';
-import { timeAgo, formatCurrency, getTrustScoreColor } from '../lib/utils';
+import { useEffect, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import {
+  Heart,
+  HandCoins,
+  Search,
+  MapPin,
+  Shield,
+  TrendingUp,
+} from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { useSocket } from '../context/SocketContext'
+import { StatCard, Card, Badge, Spinner } from '../components/ui'
+import { bloodAPI, fundAPI, missingAPI, userAPI } from '../lib/api'
+import { timeAgo, formatCurrency, getTrustScoreColor } from '../lib/utils'
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const { on } = useSocket();
-  const [recentRequests, setRecentRequests] = useState([]);
-  const [recentCampaigns, setRecentCampaigns] = useState([]);
-  const [recentMissing, setRecentMissing] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth()
+  const { on } = useSocket()
+  const [recentRequests, setRecentRequests] = useState([])
+  const [recentCampaigns, setRecentCampaigns] = useState([])
+  const [recentMissing, setRecentMissing] = useState([])
+  const [communityStats, setCommunityStats] = useState(
+    user?.community_stats || null
+  )
+  const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
     try {
-      const [reqRes, campRes, missRes] = await Promise.all([
+      const [reqRes, campRes, missRes, profileRes] = await Promise.all([
         bloodAPI.getRequests({ limit: 5 }),
         fundAPI.listCampaigns({ limit: 5 }),
         missingAPI.list({ limit: 5 }),
-      ]);
-      setRecentRequests(reqRes.data?.data?.requests || []);
-      setRecentCampaigns(campRes.data?.data?.campaigns || []);
-      setRecentMissing(missRes.data?.data?.missing_persons || []);
+        userAPI.getProfile(),
+      ])
+      setRecentRequests(reqRes.data?.data?.requests || [])
+      setRecentCampaigns(campRes.data?.data?.campaigns || [])
+      setRecentMissing(missRes.data?.data?.missing_persons || [])
+      setCommunityStats(profileRes.data?.data?.community_stats || null)
     } catch (err) {
-      console.error('Dashboard load error:', err);
+      console.error('Dashboard load error:', err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData()
+  }, [loadData])
 
   // ── Real-time: refresh dashboard on any action ──
   useEffect(() => {
     const unsub = on('dashboard:refresh', () => {
-      loadData();
-    });
-    return unsub;
-  }, [on, loadData]);
+      loadData()
+    })
+    return unsub
+  }, [on, loadData])
 
-  if (loading) return <Spinner size="lg" />;
+  if (loading) return <Spinner size="lg" />
 
   return (
     <div className="space-y-8">
       {/* Welcome */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold text-text">
               Welcome back, {user?.name || 'User'} 👋
             </h1>
-            <p className="text-text-secondary mt-1">Here's what's happening in your community</p>
+            <p className="text-text-secondary mt-1">
+              Here's what's happening in your community
+            </p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary/10">
             <Shield className="h-4 w-4 text-secondary" />
-            <span className={`font-bold ${getTrustScoreColor(user?.trust_score || 50)}`}>
+            <span
+              className={`font-bold ${getTrustScoreColor(user?.trust_score || 50)}`}
+            >
               Trust: {user?.trust_score || 50}/100
             </span>
             {user?.is_verified && <Badge variant="success">Verified</Badge>}
@@ -70,19 +89,59 @@ export default function Dashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Heart} label="Blood Donations" value={user?.stats?.blood_donations || 0} color="danger" />
-        <StatCard icon={HandCoins} label="Funds Raised" value={formatCurrency(user?.stats?.total_raised || 0)} color="accent" />
-        <StatCard icon={Search} label="Missing Reports" value={user?.stats?.missing_reports || 0} color="secondary" />
-        <StatCard icon={TrendingUp} label="Campaigns" value={user?.stats?.campaigns_created || 0} color="success" />
+        <StatCard
+          icon={Heart}
+          label="Blood Donations"
+          value={communityStats?.blood_donations || 0}
+          color="danger"
+        />
+        <StatCard
+          icon={HandCoins}
+          label="Funds Raised"
+          value={formatCurrency(communityStats?.total_funds_raised || 0)}
+          color="accent"
+        />
+        <StatCard
+          icon={Search}
+          label="Missing Reports"
+          value={communityStats?.missing_reports || 0}
+          color="secondary"
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Campaigns"
+          value={communityStats?.campaigns_created || 0}
+          color="success"
+        />
       </div>
 
       {/* Quick Actions */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { to: '/blood', icon: Heart, label: 'Donate Blood', color: 'from-red-500 to-rose-600' },
-          { to: '/fund', icon: HandCoins, label: 'Start Campaign', color: 'from-amber-500 to-orange-600' },
-          { to: '/missing', icon: Search, label: 'Report Missing', color: 'from-blue-500 to-indigo-600' },
-          { to: '/map', icon: MapPin, label: 'View Map', color: 'from-green-500 to-emerald-600' },
+          {
+            to: '/blood',
+            icon: Heart,
+            label: 'Donate Blood',
+            color: 'from-red-500 to-rose-600',
+          },
+          {
+            to: '/fund',
+            icon: HandCoins,
+            label: 'Start Campaign',
+            color: 'from-amber-500 to-orange-600',
+          },
+          {
+            to: '/missing',
+            icon: Search,
+            label: 'Report Missing',
+            color: 'from-blue-500 to-indigo-600',
+          },
+          {
+            to: '/map',
+            icon: MapPin,
+            label: 'View Map',
+            color: 'from-green-500 to-emerald-600',
+          },
         ].map((action) => (
           <Link key={action.to} to={action.to}>
             <motion.div
@@ -106,21 +165,34 @@ export default function Dashboard() {
               <Heart className="h-5 w-5 text-primary" />
               Active Blood Requests
             </h3>
-            <Link to="/blood" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/blood" className="text-xs text-primary hover:underline">
+              View all
+            </Link>
           </div>
           <div className="space-y-3">
             {recentRequests.length === 0 ? (
-              <p className="text-sm text-text-muted text-center py-4">No active requests</p>
+              <p className="text-sm text-text-muted text-center py-4">
+                No active requests
+              </p>
             ) : (
               recentRequests.slice(0, 4).map((req) => (
-                <div key={req.id} className="flex items-center justify-between p-3 rounded-xl bg-bg">
+                <div
+                  key={req.id}
+                  className="flex items-center justify-between p-3 rounded-xl bg-bg"
+                >
                   <div>
-                    <p className="text-sm font-semibold text-text">{req.patient_name}</p>
-                    <p className="text-xs text-text-secondary">{req.hospital_name || req.city}</p>
+                    <p className="text-sm font-semibold text-text">
+                      {req.patient_name}
+                    </p>
+                    <p className="text-xs text-text-secondary">
+                      {req.hospital_name || req.city}
+                    </p>
                   </div>
                   <div className="text-right">
                     <Badge variant={req.urgency}>{req.blood_group}</Badge>
-                    <p className="text-xs text-text-muted mt-1">{timeAgo(req.created_at)}</p>
+                    <p className="text-xs text-text-muted mt-1">
+                      {timeAgo(req.created_at)}
+                    </p>
                   </div>
                 </div>
               ))
@@ -135,20 +207,28 @@ export default function Dashboard() {
               <HandCoins className="h-5 w-5 text-accent" />
               Active Campaigns
             </h3>
-            <Link to="/fund" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/fund" className="text-xs text-primary hover:underline">
+              View all
+            </Link>
           </div>
           <div className="space-y-3">
             {recentCampaigns.length === 0 ? (
-              <p className="text-sm text-text-muted text-center py-4">No active campaigns</p>
+              <p className="text-sm text-text-muted text-center py-4">
+                No active campaigns
+              </p>
             ) : (
               recentCampaigns.slice(0, 4).map((camp) => (
                 <div key={camp.id} className="p-3 rounded-xl bg-bg">
-                  <p className="text-sm font-semibold text-text truncate">{camp.title}</p>
+                  <p className="text-sm font-semibold text-text truncate">
+                    {camp.title}
+                  </p>
                   <div className="flex items-center justify-between mt-2">
                     <div className="w-full bg-gray-200 rounded-full h-2 mr-3">
                       <div
                         className="bg-gradient-to-r from-accent to-amber-500 h-2 rounded-full"
-                        style={{ width: `${Math.min(camp.progress_percentage || 0, 100)}%` }}
+                        style={{
+                          width: `${Math.min(camp.progress_percentage || 0, 100)}%`,
+                        }}
                       />
                     </div>
                     <span className="text-xs text-text-secondary whitespace-nowrap">
@@ -168,21 +248,35 @@ export default function Dashboard() {
               <Search className="h-5 w-5 text-secondary" />
               Missing Persons
             </h3>
-            <Link to="/missing" className="text-xs text-primary hover:underline">View all</Link>
+            <Link
+              to="/missing"
+              className="text-xs text-primary hover:underline"
+            >
+              View all
+            </Link>
           </div>
           <div className="space-y-3">
             {recentMissing.length === 0 ? (
-              <p className="text-sm text-text-muted text-center py-4">No active cases</p>
+              <p className="text-sm text-text-muted text-center py-4">
+                No active cases
+              </p>
             ) : (
               recentMissing.slice(0, 4).map((mp) => (
-                <div key={mp.id} className="flex items-center justify-between p-3 rounded-xl bg-bg">
+                <div
+                  key={mp.id}
+                  className="flex items-center justify-between p-3 rounded-xl bg-bg"
+                >
                   <div>
                     <p className="text-sm font-semibold text-text">{mp.name}</p>
-                    <p className="text-xs text-text-secondary">{mp.city || 'Unknown'}</p>
+                    <p className="text-xs text-text-secondary">
+                      {mp.city || 'Unknown'}
+                    </p>
                   </div>
                   <div className="text-right">
                     <Badge variant={mp.urgency}>{mp.urgency}</Badge>
-                    <p className="text-xs text-text-muted mt-1">{mp.sighting_count || 0} sightings</p>
+                    <p className="text-xs text-text-muted mt-1">
+                      {mp.sighting_count || 0} sightings
+                    </p>
                   </div>
                 </div>
               ))
@@ -191,5 +285,5 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
-  );
+  )
 }

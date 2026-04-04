@@ -57,6 +57,7 @@ const report = async (req, res) => {
         reporter_name: req.user.name,
       })
       io.emit('dashboard:refresh')
+      io.emit('leaderboard:refresh')
     }
 
     return res.status(201).json({

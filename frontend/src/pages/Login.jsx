@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Shield, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { Button, Card } from '../components/ui'
 import { authAPI } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { signInWithGoogle } from '../lib/firebase'
+
+const BRAND_LOGO_SRC = '/WhatsApp%20Image%202026-04-05%20at%201.07.09%20AM.jpeg'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -102,9 +104,11 @@ export default function Login() {
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
-            <Shield className="h-8 w-8 text-white" />
-          </div>
+          <img
+            src={BRAND_LOGO_SRC}
+            alt="SAHYOG Logo"
+            className="w-16 h-16 rounded-2xl object-cover mx-auto mb-4 shadow-lg shadow-primary/20"
+          />
           <h1 className="font-heading text-2xl font-bold text-text">
             Welcome Back
           </h1>
@@ -245,8 +249,15 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-xs text-text-muted mt-6">
-          By continuing, you agree to SAHYOG's Terms of Service and Privacy
-          Policy.
+          By continuing, you agree to SAHYOG's{' '}
+          <Link to="/terms-of-service" className="text-primary hover:underline">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy-policy" className="text-primary hover:underline">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </motion.div>
     </div>

@@ -105,7 +105,14 @@ export const bloodAPI = {
 // ============================================
 export const fundAPI = {
   getCategories: () => api.get('/fund/categories'),
-  createCampaign: (data) => api.post('/fund/campaign/create', data),
+  createCampaign: (data) =>
+    api.post(
+      '/fund/campaign/create',
+      data,
+      data instanceof FormData
+        ? { headers: { 'Content-Type': 'multipart/form-data' } }
+        : undefined
+    ),
   listCampaigns: (params) => api.get('/fund/campaign/list', { params }),
   donate: (data) => api.post('/fund/donate', data),
   getTransactions: (params) => api.get('/fund/transactions', { params }),

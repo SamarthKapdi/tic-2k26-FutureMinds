@@ -1,50 +1,59 @@
-import { motion } from 'framer-motion';
-import { Globe, Mail, Link2, ExternalLink, Code, Palette, Brain, Megaphone } from 'lucide-react';
+import { motion } from 'framer-motion'
+import {
+  Globe,
+  Mail,
+  Link2,
+  ExternalLink,
+  Code,
+  Palette,
+  Brain,
+  Megaphone,
+} from 'lucide-react'
 
 const teamMembers = [
   {
     name: 'Samarth Kapdi',
     role: 'Team Lead & UI/UX Designer',
-    img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300',
+    img: '/WhatsApp%20Image%202026-04-04%20at%202.23.02%20PM.jpeg',
     icon: Code,
     accent: 'from-primary to-primary-dark',
   },
   {
     name: 'Nikhil Soni',
     role: 'Backend Lead',
-    img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=300',
+    img: '/WhatsApp%20Image%202026-04-04%20at%202.23.07%20PM.jpeg',
     icon: Palette,
     accent: 'from-secondary to-secondary-dark',
   },
   {
     name: 'Aditya Kapse',
     role: 'Research & Documentation',
-    img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300',
+    img: '/WhatsApp%20Image%202026-04-04%20at%202.07.54%20PM.jpeg',
     icon: Brain,
     accent: 'from-accent to-amber-600',
   },
   {
     name: 'Rohit Rajure',
     role: 'QA & Testing',
-    img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=300',
+    img: '/WhatsApp%20Image%202026-04-04%20at%202.23.11%20PM.jpeg',
     icon: Megaphone,
     accent: 'from-success to-green-700',
   },
   {
     name: 'Ashish Parihar',
     role: 'Backend Developer & DevOps & System Architect',
-    img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=300',
+    img: '/WhatsApp%20Image%202026-04-04%20at%202.36.56%20PM.jpeg',
     icon: Megaphone,
     accent: 'from-success to-green-700',
   },
-];
+]
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true },
   transition: { duration: 0.5 },
-};
+}
 
 export default function OurTeam() {
   return (
@@ -66,7 +75,7 @@ export default function OurTeam() {
       {/* ── Team Grid ── */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
         {teamMembers.map((member, i) => {
-          const RoleIcon = member.icon;
+          const RoleIcon = member.icon
           return (
             <motion.div
               key={member.name}
@@ -89,7 +98,9 @@ export default function OurTeam() {
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>
-                  <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-lg bg-gradient-to-br ${member.accent} flex items-center justify-center shadow-md`}>
+                  <div
+                    className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-lg bg-gradient-to-br ${member.accent} flex items-center justify-center shadow-md`}
+                  >
                     <RoleIcon className="h-4 w-4 text-white" />
                   </div>
                 </div>
@@ -119,7 +130,7 @@ export default function OurTeam() {
                 </div>
               </div>
             </motion.div>
-          );
+          )
         })}
       </div>
 
@@ -132,9 +143,10 @@ export default function OurTeam() {
           Want to Build With Us?
         </h3>
         <p className="text-white/80 max-w-xl mx-auto text-lg">
-          We're always looking for passionate individuals who want to use their skills for social impact.
+          We're always looking for passionate individuals who want to use their
+          skills for social impact.
         </p>
       </motion.div>
     </div>
-  );
+  )
 }

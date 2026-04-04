@@ -7,11 +7,14 @@ const { uploadUserAvatar } = require('../../services/r2.service')
 const getProfile = async (req, res) => {
   try {
     const user = await userService.getProfile(req.user.id)
-    const stats = await userService.getUserStats(req.user.id)
+    const [stats, communityStats] = await Promise.all([
+      userService.getUserStats(req.user.id),
+      userService.getCommunityStats(),
+    ])
 
     return res.status(200).json({
       success: true,
-      data: { user, stats },
+      data: { user, stats, community_stats: communityStats },
     })
   } catch (error) {
     console.error('Get profile error:', error)

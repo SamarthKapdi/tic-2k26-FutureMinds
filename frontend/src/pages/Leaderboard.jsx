@@ -1,39 +1,72 @@
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Trophy, Medal, Crown, Heart, Search, HandCoins, RefreshCw } from 'lucide-react';
-import { Card, Spinner } from '../components/ui';
-import TrustBadge from '../components/TrustBadge';
-import { userAPI } from '../lib/api';
-import { useSocket } from '../context/SocketContext';
+import { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
+import {
+  Trophy,
+  Medal,
+  Crown,
+  Heart,
+  Search,
+  HandCoins,
+  RefreshCw,
+} from 'lucide-react'
+import { Card, Spinner } from '../components/ui'
+import TrustBadge from '../components/TrustBadge'
+import { userAPI } from '../lib/api'
+import { useSocket } from '../context/SocketContext'
 
-const rankIcons = [Crown, Medal, Medal];
+const REFRESH_INTERVAL_MS = 15000
 
 export default function Leaderboard() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const { on, connected } = useSocket();
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const { on, connected } = useSocket()
 
   const loadData = useCallback(async () => {
     try {
-      const { data } = await userAPI.getLeaderboard({ limit: 20 });
-      if (data.success) setUsers(data.data.users);
-    } catch { /* silent */ }
-    setLoading(false);
-  }, []);
+      const { data } = await userAPI.getLeaderboard({ limit: 20 })
+      if (data.success) setUsers(data.data.users)
+    } catch {
+      /* silent */
+    }
+    setLoading(false)
+  }, [])
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData()
+  }, [loadData])
 
   // ── Real-time: refresh leaderboard on action ──
   useEffect(() => {
     const unsub = on('leaderboard:refresh', () => {
-      loadData();
-    });
-    return unsub;
-  }, [on, loadData]);
+      loadData()
+    })
+    return unsub
+  }, [on, loadData])
 
-  if (loading) return <Spinner size="lg" />;
+  // Keep leaderboard fresh even if websocket reconnects slowly.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadData()
+    }, REFRESH_INTERVAL_MS)
+
+    const onFocus = () => loadData()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadData()
+      }
+    }
+
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [loadData])
+
+  if (loading) return <Spinner size="lg" />
 
   return (
     <div className="space-y-6">
@@ -43,7 +76,9 @@ export default function Leaderboard() {
             <Trophy className="h-7 w-7 text-amber-500" />
             Community Leaderboard
           </h1>
-          <p className="text-text-secondary mt-1">Top contributors making a difference</p>
+          <p className="text-text-secondary mt-1">
+            Top contributors making a difference
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {connected && (
@@ -66,8 +101,8 @@ export default function Leaderboard() {
       {users.length >= 3 && (
         <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
           {[1, 0, 2].map((idx) => {
-            const u = users[idx];
-            const isFirst = idx === 0;
+            const u = users[idx]
+            const isFirst = idx === 0
             return (
               <motion.div
                 key={u.id}
@@ -76,15 +111,26 @@ export default function Leaderboard() {
                 transition={{ delay: idx * 0.15 }}
                 className={`text-center ${isFirst ? 'order-2 -mt-4' : idx === 1 ? 'order-1 mt-4' : 'order-3 mt-4'}`}
               >
-                <Card hover={false} className={`!p-4 ${isFirst ? '!border-amber-300 !shadow-amber-100 !shadow-lg' : ''}`}>
-                  <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-2 ${
-                    isFirst ? 'bg-amber-100' : 'bg-gray-100'
-                  }`}>
-                    {isFirst ? <Crown className="h-6 w-6 text-amber-500" /> :
-                     idx === 1 ? <Medal className="h-5 w-5 text-gray-400" /> :
-                     <Medal className="h-5 w-5 text-amber-700" />}
+                <Card
+                  hover={false}
+                  className={`!p-4 ${isFirst ? '!border-amber-300 !shadow-amber-100 !shadow-lg' : ''}`}
+                >
+                  <div
+                    className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-2 ${
+                      isFirst ? 'bg-amber-100' : 'bg-gray-100'
+                    }`}
+                  >
+                    {isFirst ? (
+                      <Crown className="h-6 w-6 text-amber-500" />
+                    ) : idx === 1 ? (
+                      <Medal className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <Medal className="h-5 w-5 text-amber-700" />
+                    )}
                   </div>
-                  <p className="font-bold text-text text-sm truncate">{u.name}</p>
+                  <p className="font-bold text-text text-sm truncate">
+                    {u.name}
+                  </p>
                   <p className="text-xs text-text-muted">{u.city || 'India'}</p>
                   <div className="mt-2">
                     <TrustBadge score={u.trust_score} size="sm" />
@@ -96,7 +142,7 @@ export default function Leaderboard() {
                   </div>
                 </Card>
               </motion.div>
-            );
+            )
           })}
         </div>
       )}
@@ -117,15 +163,28 @@ export default function Leaderboard() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-text text-sm truncate">{u.name}</p>
-                    {u.is_verified && <span className="text-green-500 text-xs">✓</span>}
+                    <p className="font-semibold text-text text-sm truncate">
+                      {u.name}
+                    </p>
+                    {u.is_verified && (
+                      <span className="text-green-500 text-xs">✓</span>
+                    )}
                   </div>
                   <p className="text-xs text-text-muted">{u.city || 'India'}</p>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-text-muted">
-                  <span className="flex items-center gap-1"><Heart className="h-3 w-3 text-red-400" />{u.donations}</span>
-                  <span className="flex items-center gap-1"><HandCoins className="h-3 w-3 text-amber-400" />{u.campaigns}</span>
-                  <span className="flex items-center gap-1"><Search className="h-3 w-3 text-blue-400" />{u.sightings}</span>
+                  <span className="flex items-center gap-1">
+                    <Heart className="h-3 w-3 text-red-400" />
+                    {u.donations}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <HandCoins className="h-3 w-3 text-amber-400" />
+                    {u.campaigns}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Search className="h-3 w-3 text-blue-400" />
+                    {u.sightings}
+                  </span>
                 </div>
                 <TrustBadge score={u.trust_score} size="sm" showLabel={false} />
               </div>
@@ -135,8 +194,10 @@ export default function Leaderboard() {
       </div>
 
       {users.length === 0 && (
-        <p className="text-center text-text-muted py-12">No leaderboard data yet. Start contributing!</p>
+        <p className="text-center text-text-muted py-12">
+          No leaderboard data yet. Start contributing!
+        </p>
       )}
     </div>
-  );
+  )
 }

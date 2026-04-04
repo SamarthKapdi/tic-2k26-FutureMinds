@@ -25,7 +25,11 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await userAPI.getProfile()
       if (data.success) {
-        setUser({ ...data.data.user, stats: data.data.stats })
+        setUser({
+          ...data.data.user,
+          stats: data.data.stats,
+          community_stats: data.data.community_stats || null,
+        })
         setIsAuthenticated(true)
       }
     } catch {

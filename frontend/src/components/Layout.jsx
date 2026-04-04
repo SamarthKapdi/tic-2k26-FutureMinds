@@ -12,7 +12,6 @@ import {
   X,
   LogOut,
   User,
-  Shield,
   Trophy,
   Settings as SettingsIcon,
   ChevronRight,
@@ -23,6 +22,8 @@ import {
   Mail,
 } from 'lucide-react'
 import NotificationBell from './NotificationBell'
+
+const BRAND_LOGO_SRC = '/WhatsApp%20Image%202026-04-05%20at%201.07.09%20AM.jpeg'
 
 /* ── Public nav links (shown in navbar for everyone) ── */
 const publicLinks = [
@@ -40,7 +41,7 @@ const authLinks = [
   { path: '/fund', label: 'Fund', icon: HandCoins },
   { path: '/missing', label: 'Missing', icon: Search },
   { path: '/map', label: 'Map', icon: MapPin },
-  { path: '/leaderboard', label: 'Board', icon: Trophy },
+  { path: '/leaderboard', label: 'Leader Board', icon: Trophy },
 ]
 
 /* ── Footer link groups ── */
@@ -66,9 +67,9 @@ const footerGroups = [
   {
     title: 'Legal',
     links: [
-      { to: '#', label: 'Privacy Policy' },
-      { to: '#', label: 'Terms of Service' },
-      { to: '#', label: 'Cookie Policy' },
+      { to: '/privacy-policy', label: 'Privacy Policy' },
+      { to: '/terms-of-service', label: 'Terms of Service' },
+      { to: '/cookie-policy', label: 'Cookie Policy' },
     ],
   },
 ]
@@ -135,9 +136,11 @@ export default function Layout({ children }) {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Shield className="h-5 w-5 text-white" />
-              </div>
+              <img
+                src={BRAND_LOGO_SRC}
+                alt="SAHYOG Logo"
+                className="w-9 h-9 rounded-xl object-cover group-hover:scale-105 transition-transform"
+              />
               <span className="font-heading text-xl font-bold text-text">
                 SAHYOG
               </span>
@@ -389,9 +392,11 @@ export default function Layout({ children }) {
             {/* Brand column */}
             <div className="col-span-2 md:col-span-4">
               <Link to="/" className="flex items-center gap-2.5 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-white" />
-                </div>
+                <img
+                  src={BRAND_LOGO_SRC}
+                  alt="SAHYOG Logo"
+                  className="w-9 h-9 rounded-xl object-cover"
+                />
                 <span className="font-heading text-xl font-bold text-text">
                   SAHYOG
                 </span>

@@ -1,13 +1,23 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
-  Shield, Mail, Lock, Eye, EyeOff, UserPlus, User, Phone,
-  MapPin, Building, Map,
-} from 'lucide-react';
-import { Button, Card } from '../components/ui';
-import { authAPI } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  UserPlus,
+  User,
+  Phone,
+  MapPin,
+  Building,
+  Map,
+} from 'lucide-react'
+import { Button, Card } from '../components/ui'
+import { authAPI } from '../lib/api'
+import { useAuth } from '../context/AuthContext'
+
+const BRAND_LOGO_SRC = '/WhatsApp%20Image%202026-04-05%20at%201.07.09%20AM.jpeg'
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -19,40 +29,40 @@ export default function Register() {
     city: '',
     state: '',
     address: '',
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
-  const { login } = useAuth();
+  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
+  const { login } = useAuth()
 
   const updateField = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
 
   const handleRegister = async (e) => {
-    e.preventDefault();
-    setError('');
+    e.preventDefault()
+    setError('')
 
     // Validation
     if (!form.name.trim()) {
-      setError('Full name is required.');
-      return;
+      setError('Full name is required.')
+      return
     }
     if (!form.email.trim()) {
-      setError('Email address is required.');
-      return;
+      setError('Email address is required.')
+      return
     }
     if (form.password.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
+      setError('Password must be at least 6 characters.')
+      return
     }
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.');
-      return;
+      setError('Passwords do not match.')
+      return
     }
 
-    setIsLoading(true);
+    setIsLoading(true)
     try {
       const { data } = await authAPI.emailRegister({
         name: form.name.trim(),
@@ -62,22 +72,25 @@ export default function Register() {
         city: form.city.trim() || undefined,
         state: form.state.trim() || undefined,
         address: form.address.trim() || undefined,
-      });
+      })
 
       if (!data.success) {
-        throw new Error(data.message || 'Registration failed');
+        throw new Error(data.message || 'Registration failed')
       }
 
-      login(data.data.token, data.data.user);
-      navigate('/dashboard');
+      login(data.data.token, data.data.user)
+      navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Registration failed');
+      setError(
+        err.response?.data?.message || err.message || 'Registration failed'
+      )
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
-  const inputClass = 'w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-surface text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all';
+  const inputClass =
+    'w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-surface text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all'
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-8">
@@ -88,11 +101,17 @@ export default function Register() {
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
-            <Shield className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="font-heading text-2xl font-bold text-text">Join SAHYOG</h1>
-          <p className="text-text-secondary mt-1">Create your account and become part of the emergency network</p>
+          <img
+            src={BRAND_LOGO_SRC}
+            alt="SAHYOG Logo"
+            className="w-16 h-16 rounded-2xl object-cover mx-auto mb-4 shadow-lg shadow-primary/20"
+          />
+          <h1 className="font-heading text-2xl font-bold text-text">
+            Join SAHYOG
+          </h1>
+          <p className="text-text-secondary mt-1">
+            Create your account and become part of the emergency network
+          </p>
         </div>
 
         <Card hover={false}>
@@ -110,7 +129,12 @@ export default function Register() {
 
             {/* Full Name */}
             <div className="space-y-1.5">
-              <label htmlFor="reg-name" className="block text-sm font-medium text-text">Full Name *</label>
+              <label
+                htmlFor="reg-name"
+                className="block text-sm font-medium text-text"
+              >
+                Full Name *
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                 <input
@@ -127,7 +151,12 @@ export default function Register() {
 
             {/* Email */}
             <div className="space-y-1.5">
-              <label htmlFor="reg-email" className="block text-sm font-medium text-text">Email Address *</label>
+              <label
+                htmlFor="reg-email"
+                className="block text-sm font-medium text-text"
+              >
+                Email Address *
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                 <input
@@ -145,7 +174,12 @@ export default function Register() {
             {/* Password Row */}
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label htmlFor="reg-password" className="block text-sm font-medium text-text">Password *</label>
+                <label
+                  htmlFor="reg-password"
+                  className="block text-sm font-medium text-text"
+                >
+                  Password *
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                   <input
@@ -163,13 +197,22 @@ export default function Register() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors cursor-pointer"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="reg-confirm" className="block text-sm font-medium text-text">Confirm Password *</label>
+                <label
+                  htmlFor="reg-confirm"
+                  className="block text-sm font-medium text-text"
+                >
+                  Confirm Password *
+                </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                   <input
@@ -177,7 +220,9 @@ export default function Register() {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Re-enter password"
                     value={form.confirmPassword}
-                    onChange={(e) => updateField('confirmPassword', e.target.value)}
+                    onChange={(e) =>
+                      updateField('confirmPassword', e.target.value)
+                    }
                     required
                     minLength={6}
                     className={inputClass}
@@ -194,7 +239,12 @@ export default function Register() {
 
             {/* Phone */}
             <div className="space-y-1.5">
-              <label htmlFor="reg-phone" className="block text-sm font-medium text-text">Phone Number</label>
+              <label
+                htmlFor="reg-phone"
+                className="block text-sm font-medium text-text"
+              >
+                Phone Number
+              </label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                 <input
@@ -211,7 +261,12 @@ export default function Register() {
             {/* City + State */}
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label htmlFor="reg-city" className="block text-sm font-medium text-text">City</label>
+                <label
+                  htmlFor="reg-city"
+                  className="block text-sm font-medium text-text"
+                >
+                  City
+                </label>
                 <div className="relative">
                   <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                   <input
@@ -226,7 +281,12 @@ export default function Register() {
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="reg-state" className="block text-sm font-medium text-text">State</label>
+                <label
+                  htmlFor="reg-state"
+                  className="block text-sm font-medium text-text"
+                >
+                  State
+                </label>
                 <div className="relative">
                   <Map className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                   <input
@@ -243,7 +303,12 @@ export default function Register() {
 
             {/* Address */}
             <div className="space-y-1.5">
-              <label htmlFor="reg-address" className="block text-sm font-medium text-text">Address</label>
+              <label
+                htmlFor="reg-address"
+                className="block text-sm font-medium text-text"
+              >
+                Address
+              </label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-text-muted" />
                 <textarea
@@ -273,7 +338,10 @@ export default function Register() {
           <div className="mt-6 text-center">
             <p className="text-sm text-text-secondary">
               Already have an account?{' '}
-              <Link to="/login" className="text-primary font-semibold hover:underline">
+              <Link
+                to="/login"
+                className="text-primary font-semibold hover:underline"
+              >
                 Sign In
               </Link>
             </p>
@@ -281,9 +349,17 @@ export default function Register() {
         </Card>
 
         <p className="text-center text-xs text-text-muted mt-6">
-          By registering, you agree to SAHYOG's Terms of Service and Privacy Policy.
+          By registering, you agree to SAHYOG's{' '}
+          <Link to="/terms-of-service" className="text-primary hover:underline">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy-policy" className="text-primary hover:underline">
+            Privacy Policy
+          </Link>
+          .
         </p>
       </motion.div>
     </div>
-  );
+  )
 }

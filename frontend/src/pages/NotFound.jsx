@@ -1,7 +1,9 @@
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Home, ArrowLeft, Shield } from 'lucide-react';
-import { Button } from '../components/ui';
+import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Home, ArrowLeft } from 'lucide-react'
+import { Button } from '../components/ui'
+
+const BRAND_LOGO_SRC = '/WhatsApp%20Image%202026-04-05%20at%201.07.09%20AM.jpeg'
 
 export default function NotFound() {
   return (
@@ -22,9 +24,11 @@ export default function NotFound() {
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
           >
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-xl">
-              <Shield className="h-10 w-10 text-white" />
-            </div>
+            <img
+              src={BRAND_LOGO_SRC}
+              alt="SAHYOG Logo"
+              className="w-20 h-20 rounded-2xl object-cover shadow-xl"
+            />
           </motion.div>
         </div>
 
@@ -32,7 +36,8 @@ export default function NotFound() {
           Page Not Found
         </h1>
         <p className="text-text-secondary mb-8 leading-relaxed">
-          The page you're looking for doesn't exist or has been moved. Let's get you back on track.
+          The page you're looking for doesn't exist or has been moved. Let's get
+          you back on track.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -51,5 +56,5 @@ export default function NotFound() {
         </div>
       </motion.div>
     </div>
-  );
+  )
 }

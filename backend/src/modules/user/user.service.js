@@ -129,6 +129,30 @@ const getUserStats = async (userId) => {
 }
 
 /**
+ * Get community-wide analytics for dashboard cards
+ */
+const getCommunityStats = async () => {
+  const [bloodDonations, fundsRaised, missingReports, campaignsCreated] =
+    await Promise.all([
+      query(
+        "SELECT COUNT(*)::int AS total FROM blood_responses WHERE status = 'completed'"
+      ),
+      query(
+        "SELECT COALESCE(SUM(amount), 0)::numeric AS total FROM fund_transactions WHERE payment_status = 'success'"
+      ),
+      query('SELECT COUNT(*)::int AS total FROM missing_persons'),
+      query('SELECT COUNT(*)::int AS total FROM fund_campaigns'),
+    ])
+
+  return {
+    blood_donations: parseInt(bloodDonations.rows[0].total),
+    total_funds_raised: parseFloat(fundsRaised.rows[0].total),
+    missing_reports: parseInt(missingReports.rows[0].total),
+    campaigns_created: parseInt(campaignsCreated.rows[0].total),
+  }
+}
+
+/**
  * Get leaderboard (top users by trust score)
  */
 const getLeaderboard = async (limit = 20) => {
@@ -142,7 +166,9 @@ const getLeaderboard = async (limit = 20) => {
     LEFT JOIN (SELECT donor_id, COUNT(*) as cnt FROM blood_responses GROUP BY donor_id) bd ON bd.donor_id = u.id
     LEFT JOIN (SELECT creator_id, COUNT(*) as cnt FROM fund_campaigns GROUP BY creator_id) fc ON fc.creator_id = u.id
     LEFT JOIN (SELECT reporter_id, COUNT(*) as cnt FROM missing_sightings GROUP BY reporter_id) ms ON ms.reporter_id = u.id
-    WHERE u.is_active = true AND u.name IS NOT NULL
+    WHERE u.is_active = true
+      AND u.name IS NOT NULL
+      AND LOWER(TRIM(u.name)) <> 'test user'
     ORDER BY u.trust_score DESC, (COALESCE(bd.cnt,0) + COALESCE(fc.cnt,0) + COALESCE(ms.cnt,0)) DESC
     LIMIT $1
   `,
@@ -221,6 +247,7 @@ module.exports = {
   getProfile,
   updateProfile,
   getUserStats,
+  getCommunityStats,
   getLeaderboard,
   getSettings,
   updateSettings,
