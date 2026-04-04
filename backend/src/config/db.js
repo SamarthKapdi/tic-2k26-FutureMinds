@@ -1,5 +1,15 @@
-const { Pool } = require('pg');
-require('dotenv').config();
+const { Pool } = require('pg')
+require('dotenv').config()
+
+const DB_INFRA_ERROR_CODES = new Set([
+  'ENOTFOUND',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'EAI_AGAIN',
+])
+const CLIENT_CHECKOUT_TIMEOUT_MS = Number(
+  process.env.DB_CLIENT_CHECKOUT_TIMEOUT_MS || 30000
+)
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -7,68 +17,85 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
-});
+})
 
 pool.on('connect', () => {
-  console.log(' Connected to PostgreSQL database');
-});
+  console.log(' Connected to PostgreSQL database')
+})
 
 pool.on('error', (err) => {
-  console.error(' Unexpected database error:', err);
-  process.exit(-1);
-});
+  console.error(' Unexpected database error:', err)
+  process.exit(-1)
+})
 
 /**
  * Execute a query with optional parameters
  */
 const query = async (text, params) => {
-  const start = Date.now();
+  const start = Date.now()
   try {
-    const result = await pool.query(text, params);
-    const duration = Date.now() - start;
+    const result = await pool.query(text, params)
+    const duration = Date.now() - start
     if (process.env.NODE_ENV === 'development') {
-      console.log(' Query:', { text: text.substring(0, 80), duration: `${duration}ms`, rows: result.rowCount });
+      console.log(' Query:', {
+        text: text.substring(0, 80),
+        duration: `${duration}ms`,
+        rows: result.rowCount,
+      })
     }
-    return result;
+    return result
   } catch (error) {
-    console.error(' Query error:', { text: text.substring(0, 80), error: error.message });
-    throw error;
+    if (DB_INFRA_ERROR_CODES.has(error.code)) {
+      error.statusCode = error.statusCode || 503
+      error.publicMessage =
+        'Database service is temporarily unavailable. Please try again.'
+    }
+
+    console.error(' Query error:', {
+      text: text.substring(0, 120),
+      error: error.message,
+      code: error.code,
+      statusCode: error.statusCode,
+    })
+    throw error
   }
-};
+}
 
 /**
  * Get a client from the pool for transactions
  */
 const getClient = async () => {
-  const client = await pool.connect();
-  const originalQuery = client.query.bind(client);
-  const originalRelease = client.release.bind(client);
+  const client = await pool.connect()
+  const originalQuery = client.query.bind(client)
+  const originalRelease = client.release.bind(client)
 
   const timeout = setTimeout(() => {
-    console.error(' Client has been checked out for too long!');
-  }, 5000);
+    console.error(
+      ` Client has been checked out for too long (${CLIENT_CHECKOUT_TIMEOUT_MS}ms)!`
+    )
+  }, CLIENT_CHECKOUT_TIMEOUT_MS)
 
   client.release = () => {
-    clearTimeout(timeout);
-    client.query = originalQuery;
-    client.release = originalRelease;
-    return originalRelease();
-  };
+    clearTimeout(timeout)
+    client.query = originalQuery
+    client.release = originalRelease
+    return originalRelease()
+  }
 
-  return client;
-};
+  return client
+}
 
 /**
  * Initialize database with PostGIS and schema
  */
 const initializeDatabase = async () => {
-  const client = await getClient();
+  const client = await getClient()
   try {
-    await client.query('BEGIN');
+    await client.query('BEGIN')
 
     // Enable PostGIS
-    await client.query('CREATE EXTENSION IF NOT EXISTS postgis;');
-    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    await client.query('CREATE EXTENSION IF NOT EXISTS postgis;')
+    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
 
     // Users table
     await client.query(`
@@ -89,12 +116,22 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Migrations for existing DBs
-    await client.query('ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;').catch(() => {});
-    await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);').catch(() => {});
-    await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL;').catch(() => {});
+    await client
+      .query('ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;')
+      .catch(() => {})
+    await client
+      .query(
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);'
+      )
+      .catch(() => {})
+    await client
+      .query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL;'
+      )
+      .catch(() => {})
 
     // User settings table
     await client.query(`
@@ -107,7 +144,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // OTP table
     await client.query(`
@@ -119,7 +156,7 @@ const initializeDatabase = async () => {
         is_used BOOLEAN DEFAULT false,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Admin table
     await client.query(`
@@ -133,7 +170,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Blood donors table
     await client.query(`
@@ -150,7 +187,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Blood requests table
     await client.query(`
@@ -172,7 +209,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Blood responses table
     await client.query(`
@@ -185,7 +222,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Fund categories table
     await client.query(`
@@ -197,7 +234,7 @@ const initializeDatabase = async () => {
         is_active BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Fund campaigns table
     await client.query(`
@@ -218,7 +255,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Fund transactions table
     await client.query(`
@@ -238,7 +275,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Missing persons table
     await client.query(`
@@ -261,7 +298,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Missing sightings table
     await client.query(`
@@ -276,7 +313,7 @@ const initializeDatabase = async () => {
         sighting_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Reports table
     await client.query(`
@@ -293,7 +330,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Verification requests table
     await client.query(`
@@ -308,22 +345,48 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
-    `);
+    `)
 
     // Create indexes
-    await client.query('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_users_location ON users USING GIST(location);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_blood_donors_location ON blood_donors USING GIST(location);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_blood_donors_blood_group ON blood_donors(blood_group);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_blood_requests_location ON blood_requests USING GIST(location);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_blood_requests_status ON blood_requests(status);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_blood_requests_urgency ON blood_requests(urgency);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_fund_campaigns_status ON fund_campaigns(status);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_fund_transactions_status ON fund_transactions(payment_status);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_missing_persons_location ON missing_persons USING GIST(last_seen_location);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_missing_persons_status ON missing_persons(status);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_otps_phone ON otps(phone);');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);');
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_users_location ON users USING GIST(location);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_blood_donors_location ON blood_donors USING GIST(location);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_blood_donors_blood_group ON blood_donors(blood_group);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_blood_requests_location ON blood_requests USING GIST(location);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_blood_requests_status ON blood_requests(status);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_blood_requests_urgency ON blood_requests(urgency);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_fund_campaigns_status ON fund_campaigns(status);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_fund_transactions_status ON fund_transactions(payment_status);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_missing_persons_location ON missing_persons USING GIST(last_seen_location);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_missing_persons_status ON missing_persons(status);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_otps_phone ON otps(phone);'
+    )
+    await client.query(
+      'CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);'
+    )
 
     // Seed default fund categories
     await client.query(`
@@ -336,26 +399,29 @@ const initializeDatabase = async () => {
         ('Community Development', 'Support community growth projects', 'users'),
         ('Elder Care', 'Help elderly people with basic needs', 'hand-heart')
       ON CONFLICT DO NOTHING;
-    `);
+    `)
 
     // Seed default admin
-    const bcrypt = require('bcryptjs');
-    const adminPasswordHash = await bcrypt.hash('admin123', 12);
-    await client.query(`
+    const bcrypt = require('bcryptjs')
+    const adminPasswordHash = await bcrypt.hash('admin123', 12)
+    await client.query(
+      `
       INSERT INTO admins (name, email, password_hash, role)
       VALUES ('Super Admin', 'admin@sahyog.org', $1, 'super_admin')
       ON CONFLICT (email) DO NOTHING;
-    `, [adminPasswordHash]);
+    `,
+      [adminPasswordHash]
+    )
 
-    await client.query('COMMIT');
-    console.log('Database schema initialized successfully');
+    await client.query('COMMIT')
+    console.log('Database schema initialized successfully')
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error(' Database initialization error:', error.message);
-    throw error;
+    await client.query('ROLLBACK')
+    console.error(' Database initialization error:', error.message)
+    throw error
   } finally {
-    client.release();
+    client.release()
   }
-};
+}
 
-module.exports = { pool, query, getClient, initializeDatabase };
+module.exports = { pool, query, getClient, initializeDatabase }

@@ -88,6 +88,7 @@ const emailLogin = async (req, res) => {
       return res.status(503).json({
         success: false,
         message:
+          error.publicMessage ||
           'Login service is temporarily unavailable. Please try again in a moment.',
         code: 'AUTH_SERVICE_UNAVAILABLE',
       })
