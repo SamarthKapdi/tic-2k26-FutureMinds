@@ -64,6 +64,13 @@ const createRequest = async (req, res) => {
       city, contact_number, description,
     });
 
+    // Emit socket event for real-time sync
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('blood:new_request', { ...request, requester_name: req.user.name });
+      io.emit('dashboard:refresh');
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Blood request created successfully',
@@ -131,6 +138,14 @@ const respond = async (req, res) => {
     }
 
     const response = await bloodService.respondToRequest(req.user.id, request_id, message);
+
+    // Emit socket event
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('blood:new_response', { request_id, donor_id: req.user.id, donor_name: req.user.name });
+      io.emit('dashboard:refresh');
+      io.emit('leaderboard:refresh');
+    }
 
     return res.status(201).json({
       success: true,

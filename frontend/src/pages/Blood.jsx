@@ -2,11 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MapPin, Clock, Users, Plus, Search, Filter } from 'lucide-react';
 import { Button, Card, Input, Select, Badge, Spinner, EmptyState } from '../components/ui';
-import TrustBadge from '../components/TrustBadge';
 import { bloodAPI } from '../lib/api';
 import { timeAgo, getUrgencyColor } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
-import toast from 'react-hot-toast';
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -67,11 +65,12 @@ export default function Blood() {
     setFormLoading(true);
     try {
       await bloodAPI.createRequest(reqForm);
-      toast.success('Blood request created successfully!');
+      setFormSuccess('Blood request created successfully!');
       setShowCreateModal(false);
       loadRequests();
+      setTimeout(() => setFormSuccess(''), 3000);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create request');
+      setFormError(err.response?.data?.message || 'Failed to create request');
     } finally {
       setFormLoading(false);
     }
@@ -83,10 +82,11 @@ export default function Blood() {
     setFormLoading(true);
     try {
       await bloodAPI.registerDonor(donorForm);
-      toast.success('Registered as blood donor!');
+      setFormSuccess('Registered as blood donor successfully!');
       setShowDonorModal(false);
+      setTimeout(() => setFormSuccess(''), 3000);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to register as donor');
+      setFormError(err.response?.data?.message || 'Failed to register as donor');
     } finally {
       setFormLoading(false);
     }
@@ -95,9 +95,10 @@ export default function Blood() {
   const handleRespond = async (requestId) => {
     try {
       await bloodAPI.respond({ request_id: requestId, message: 'I would like to donate!' });
-      toast.success('Response submitted! The requester has been notified.');
+      setFormSuccess('Response submitted!');
+      setTimeout(() => setFormSuccess(''), 3000);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to respond');
+      alert(err.response?.data?.message || 'Failed to respond');
     }
   };
 
@@ -124,15 +125,6 @@ export default function Blood() {
             </Button>
           </div>
         )}
-      </div>
-
-      {/* Process Info */}
-      <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6">
-        <h2 className="text-lg font-bold text-primary mb-2">Problem & Implementation</h2>
-        <p className="text-text-secondary leading-relaxed text-sm">
-          <strong>The Problem:</strong> In critical emergencies, relying on unstructured social media posts to find matching blood donors causes fatal delays and unverified information.<br/>
-          <strong>Our Process:</strong> A request is formally raised with hospital details and required blood group. The network instantly matches and alerts willing, verified donors who are geographically closest to the patient. A donor confirms and proceeds directly to the hospital, completely eliminating the frantic search and saving crucial time.
-        </p>
       </div>
 
       {/* Success message */}
@@ -163,10 +155,6 @@ export default function Blood() {
                   </div>
                 </div>
                 <Badge variant={req.urgency}>{req.urgency}</Badge>
-              </div>
-              <div className="flex items-center gap-2 mb-1">
-                <TrustBadge score={req.trust_score} size="sm" showLabel={false} />
-                {req.is_verified && <Badge variant="success">✓</Badge>}
               </div>
               {req.hospital_name && (
                 <p className="text-sm text-text-secondary flex items-center gap-1 mb-1">
