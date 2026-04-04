@@ -1,37 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Crown, Star, Shield, Heart, Search, HandCoins } from 'lucide-react';
+import { Trophy, Medal, Crown, Heart, Search, HandCoins, RefreshCw } from 'lucide-react';
 import { Card, Spinner } from '../components/ui';
 import TrustBadge from '../components/TrustBadge';
 import { userAPI } from '../lib/api';
+import { useSocket } from '../context/SocketContext';
 
 const rankIcons = [Crown, Medal, Medal];
-const rankColors = ['text-amber-500', 'text-gray-400', 'text-amber-700'];
 
 export default function Leaderboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { on, connected } = useSocket();
+
+  const loadData = useCallback(async () => {
+    try {
+      const { data } = await userAPI.getLeaderboard({ limit: 20 });
+      if (data.success) setUsers(data.data.users);
+    } catch { /* silent */ }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await userAPI.getLeaderboard({ limit: 20 });
-        if (data.success) setUsers(data.data.users);
-      } catch { /* silent */ }
-      setLoading(false);
-    })();
-  }, []);
+    loadData();
+  }, [loadData]);
+
+  // ── Real-time: refresh leaderboard on action ──
+  useEffect(() => {
+    const unsub = on('leaderboard:refresh', () => {
+      loadData();
+    });
+    return unsub;
+  }, [on, loadData]);
 
   if (loading) return <Spinner size="lg" />;
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="font-heading text-2xl sm:text-3xl font-bold text-text flex items-center justify-center gap-2">
-          <Trophy className="h-7 w-7 text-amber-500" />
-          Community Leaderboard
-        </h1>
-        <p className="text-text-secondary mt-1">Top contributors making a difference</p>
+      <div className="flex items-center justify-between">
+        <div className="text-center flex-1">
+          <h1 className="font-heading text-2xl sm:text-3xl font-bold text-text flex items-center justify-center gap-2">
+            <Trophy className="h-7 w-7 text-amber-500" />
+            Community Leaderboard
+          </h1>
+          <p className="text-text-secondary mt-1">Top contributors making a difference</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {connected && (
+            <span className="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Live
+            </span>
+          )}
+          <button
+            onClick={loadData}
+            className="p-2 rounded-xl text-text-secondary hover:bg-surface-hover transition-colors cursor-pointer"
+            title="Refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Top 3 Podium */}
