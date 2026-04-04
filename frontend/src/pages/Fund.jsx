@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HandCoins, Plus, Target, Users, TrendingUp, Heart } from 'lucide-react'
 import {
@@ -16,6 +17,7 @@ import { useAuth } from '../context/AuthContext'
 
 export default function Fund() {
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [campaigns, setCampaigns] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -102,11 +104,26 @@ export default function Fund() {
         campaign_id: showDonateModal,
         ...donateForm,
       })
-      if (data.data?.payment_link) {
-        window.open(data.data.payment_link, '_blank')
+      const orderId = data?.data?.order_id
+      if (!orderId) {
+        throw new Error('Payment order ID not received')
       }
-      setFormSuccess('Donation order created! Completing payment...')
+
+      const selectedCampaign = campaigns.find((c) => c.id === showDonateModal)
+      const expiresAt = Date.now() + 5 * 60 * 1000
+      const params = new URLSearchParams({
+        amount: String(donateForm.amount || ''),
+        campaignId: String(showDonateModal),
+        campaignTitle: selectedCampaign?.title || 'SAHYOG Campaign',
+        donorName: donateForm.donor_name || 'Supporter',
+        donorEmail: donateForm.donor_email || '',
+        donorPhone: donateForm.donor_phone || '',
+        expiresAt: String(expiresAt),
+      })
+
+      setFormSuccess('Donation order created. Redirecting to payment...')
       setShowDonateModal(null)
+      navigate(`/payment/mock/${orderId}?${params.toString()}`)
       setTimeout(() => setFormSuccess(''), 5000)
     } catch (err) {
       setFormError(err.response?.data?.message || 'Failed to process donation')

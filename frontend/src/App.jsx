@@ -28,6 +28,7 @@ import MapInfo from './pages/MapInfo'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsOfService from './pages/TermsOfService'
 import CookiePolicy from './pages/CookiePolicy'
+import PaymentMock from './pages/PaymentMock'
 import NotFound from './pages/NotFound'
 import { Spinner } from './components/ui'
 import { Toaster } from 'react-hot-toast'
@@ -279,6 +280,7 @@ function AppRoutes() {
           </Layout>
         }
       />
+      <Route path="/payment/mock/:orderId" element={<PaymentMock />} />
       <Route
         path="*"
         element={
