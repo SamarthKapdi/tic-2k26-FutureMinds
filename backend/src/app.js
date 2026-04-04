@@ -27,12 +27,35 @@ const server = http.createServer(app)
 // Required so express-rate-limit can read client IP from X-Forwarded-For safely.
 app.set('trust proxy', 1)
 
-// ═══════════════════════════════════════════
+const allowedOrigins = [
+  'http://localhost:5173',
+  ...(process.env.FRONTEND_URLS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.trim()] : []),
+]
+
+const isAllowedOrigin = (origin) => {
+  // Allow non-browser clients (curl, health checks) without Origin header.
+  if (!origin) return true
+  return allowedOrigins.includes(origin)
+}
+
+const corsOriginHandler = (origin, callback) => {
+  if (isAllowedOrigin(origin)) {
+    callback(null, true)
+    return
+  }
+
+  callback(new Error(`CORS blocked for origin: ${origin}`))
+}
+
 // SOCKET.IO SETUP
-// ═══════════════════════════════════════════
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: corsOriginHandler,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -79,7 +102,7 @@ app.use(
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: corsOriginHandler,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -176,14 +199,37 @@ const startServer = async () => {
   try {
     await initializeDatabase()
 
-    server.listen(PORT, () => {
-      console.log(`SAHYOG API Server Running :-     
-                    Port:        ${PORT}                        
+    const startListening = (portToTry, attempt = 0) => {
+      const maxAttempts = 20
+
+      server.once('error', (error) => {
+        const isAddressInUse = error?.code === 'EADDRINUSE'
+        const isDevelopment = process.env.NODE_ENV !== 'production'
+
+        if (isAddressInUse && isDevelopment && attempt < maxAttempts) {
+          const nextPort = Number(portToTry) + 1
+          console.warn(
+            `Port ${portToTry} is already in use. Retrying on port ${nextPort}...`
+          )
+          startListening(nextPort, attempt + 1)
+          return
+        }
+
+        console.error('Failed to bind server port:', error)
+        process.exit(1)
+      })
+
+      server.listen(portToTry, () => {
+        console.log(`SAHYOG API Server Running :-     
+                    Port:        ${portToTry}                        
                     Environment: ${process.env.NODE_ENV}
-                    API:         http://localhost:${PORT}/api
+                    API:         http://localhost:${portToTry}/api
                     Socket.IO:   Enabled ⚡
                 `)
-    })
+      })
+    }
+
+    startListening(PORT)
   } catch (error) {
     console.error('Failed to start server:', error)
     process.exit(1)

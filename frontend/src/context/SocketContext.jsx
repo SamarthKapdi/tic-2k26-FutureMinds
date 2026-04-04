@@ -118,6 +118,7 @@ export function SocketProvider({ children }) {
 
     const socketBaseUrl =
       import.meta.env.VITE_SOCKET_URL ||
+      import.meta.env.VITE_BACKEND_URL ||
       (import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin)
 
     const s = io(socketBaseUrl, {
