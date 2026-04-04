@@ -1,35 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Shield, Users, FileCheck, AlertTriangle, Heart, HandCoins, Search,
-  CheckCircle, XCircle, LogOut, LayoutDashboard, ChevronRight
+  CheckCircle, XCircle, LogOut, LayoutDashboard, UserX, UserCheck, DollarSign, Droplets
 } from 'lucide-react';
 import { Button, Card, StatCard, Badge, Spinner } from '../components/ui';
+import TrustBadge from '../components/TrustBadge';
 import { adminAPI } from '../lib/api';
-import { timeAgo } from '../lib/utils';
+import { timeAgo, formatCurrency } from '../lib/utils';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [verifications, setVerifications] = useState([]);
   const [reports, setReports] = useState([]);
+  const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [userSearch, setUserSearch] = useState('');
   const navigate = useNavigate();
 
   const admin = JSON.parse(localStorage.getItem('sahyog_admin') || '{}');
 
-  useEffect(() => {
-    if (!localStorage.getItem('sahyog_admin_token')) {
-      navigate('/admin/login');
-      return;
-    }
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
     try {
       const [dashRes, verRes, repRes] = await Promise.all([
         adminAPI.getDashboard(),
@@ -45,7 +39,32 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!localStorage.getItem('sahyog_admin_token')) {
+      navigate('/admin/login');
+      return;
+    }
+    loadData();
+  }, [loadData, navigate]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, [loadData]);
+
+  const loadUsers = useCallback(async (search = '') => {
+    try {
+      const res = await adminAPI.getUsers({ limit: 50, search: search || undefined });
+      setUsers(res.data?.data?.users || []);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'users') loadUsers(userSearch);
+  }, [activeTab, userSearch, loadUsers]);
 
   const handleApprove = async (id) => {
     setActionLoading(id);
@@ -54,9 +73,7 @@ export default function AdminDashboard() {
       loadData();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed');
-    } finally {
-      setActionLoading(null);
-    }
+    } finally { setActionLoading(null); }
   };
 
   const handleReject = async (id) => {
@@ -68,9 +85,7 @@ export default function AdminDashboard() {
       loadData();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed');
-    } finally {
-      setActionLoading(null);
-    }
+    } finally { setActionLoading(null); }
   };
 
   const handleReportAction = async (id, action) => {
@@ -81,9 +96,18 @@ export default function AdminDashboard() {
       loadData();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed');
-    } finally {
-      setActionLoading(null);
-    }
+    } finally { setActionLoading(null); }
+  };
+
+  const handleBan = async (userId, ban) => {
+    if (!confirm(ban ? 'Ban this user?' : 'Unban this user?')) return;
+    setActionLoading(userId);
+    try {
+      await adminAPI.banUser({ userId, ban });
+      loadUsers(userSearch);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed');
+    } finally { setActionLoading(null); }
   };
 
   const handleLogout = () => {
@@ -98,6 +122,7 @@ export default function AdminDashboard() {
     { key: 'overview', label: 'Overview', icon: LayoutDashboard },
     { key: 'verifications', label: 'Verifications', icon: FileCheck, count: verifications.filter((v) => v.status === 'pending').length },
     { key: 'reports', label: 'Reports', icon: AlertTriangle, count: reports.filter((r) => r.status === 'pending').length },
+    { key: 'users', label: 'Users', icon: Users },
   ];
 
   return (
@@ -120,12 +145,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-surface rounded-xl border border-border">
+      <div className="flex gap-1 p-1 bg-surface rounded-xl border border-border overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex-1 justify-center ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex-1 justify-center whitespace-nowrap ${
               activeTab === tab.key ? 'bg-white shadow-sm text-text' : 'text-text-secondary hover:text-text'
             }`}
           >
@@ -150,6 +175,9 @@ export default function AdminDashboard() {
             <StatCard icon={Heart} label="Active Blood Requests" value={stats?.active_blood_requests || 0} color="danger" />
             <StatCard icon={HandCoins} label="Active Campaigns" value={stats?.active_campaigns || 0} color="accent" />
             <StatCard icon={Search} label="Missing Cases" value={stats?.active_missing_cases || 0} color="secondary" />
+            <StatCard icon={DollarSign} label="Total Funds Raised" value={formatCurrency(stats?.total_funds_raised || 0)} color="success" />
+            <StatCard icon={Droplets} label="Total Donors" value={stats?.total_donors || 0} color="primary" />
+            <StatCard icon={HandCoins} label="Total Donations" value={stats?.total_donations || 0} color="accent" />
           </div>
         </div>
       )}
@@ -220,6 +248,73 @@ export default function AdminDashboard() {
                 </div>
               </Card>
             ))
+          )}
+        </div>
+      )}
+
+      {/* Users */}
+      {activeTab === 'users' && (
+        <div className="space-y-4">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Search by name, email, or phone..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-surface text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+            />
+          </div>
+          {users.length === 0 ? (
+            <Card hover={false}><p className="text-text-muted text-center py-8">No users found</p></Card>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-secondary">User</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-secondary">Trust</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-secondary">Status</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-secondary">Activity</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-secondary">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id} className="border-b border-border/50 hover:bg-surface-hover transition-colors">
+                      <td className="py-3 px-4">
+                        <p className="text-sm font-semibold text-text">{u.name || 'Unnamed'}</p>
+                        <p className="text-xs text-text-muted">{u.email || u.phone}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <TrustBadge score={u.trust_score} size="sm" showLabel={false} />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={u.is_active ? 'success' : 'critical'}>
+                            {u.is_active ? 'Active' : 'Banned'}
+                          </Badge>
+                          {u.is_verified && <Badge variant="info">Verified</Badge>}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-xs text-text-secondary">
+                        {u.blood_requests || 0} requests · {u.campaigns || 0} campaigns
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {u.is_active ? (
+                          <Button size="sm" variant="danger" loading={actionLoading === u.id} onClick={() => handleBan(u.id, true)}>
+                            <UserX className="h-3.5 w-3.5" /> Ban
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="success" loading={actionLoading === u.id} onClick={() => handleBan(u.id, false)}>
+                            <UserCheck className="h-3.5 w-3.5" /> Unban
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

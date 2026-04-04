@@ -54,9 +54,14 @@ adminApi.interceptors.response.use(
   }
 );
 
+// ============================================
+// AUTH API
+// ============================================
 export const authAPI = {
-  firebaseLogin: (data) => api.post('/auth/firebase', data),
-  demoLogin: () => api.post('/auth/demo'),
+  emailRegister: (data) => api.post('/auth/register', data),
+  emailLogin: (data) => api.post('/auth/login', data),
+  firebaseLogin: (idToken) => api.post('/auth/firebase-login', { idToken }),
+  completeProfile: (data) => api.post('/auth/complete-profile', data),
 };
 
 // ============================================
@@ -65,6 +70,9 @@ export const authAPI = {
 export const userAPI = {
   getProfile: () => api.get('/user/profile'),
   updateProfile: (data) => api.put('/user/update', data),
+  getLeaderboard: (params) => api.get('/user/leaderboard', { params }),
+  getSettings: () => api.get('/user/settings'),
+  updateSettings: (data) => api.put('/user/settings', data),
 };
 
 // ============================================
@@ -84,7 +92,9 @@ export const bloodAPI = {
 // ============================================
 export const fundAPI = {
   getCategories: () => api.get('/fund/categories'),
-  createCampaign: (data) => api.post('/fund/campaign/create', data),
+  createCampaign: (data, isMultipart = false) => api.post('/fund/campaign/create', data, isMultipart ? {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  } : undefined),
   listCampaigns: (params) => api.get('/fund/campaign/list', { params }),
   donate: (data) => api.post('/fund/donate', data),
   getTransactions: (params) => api.get('/fund/transactions', { params }),
@@ -94,7 +104,9 @@ export const fundAPI = {
 // MISSING API
 // ============================================
 export const missingAPI = {
-  report: (data) => api.post('/missing/report', data),
+  report: (data, isMultipart = false) => api.post('/missing/report', data, isMultipart ? {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  } : undefined),
   list: (params) => api.get('/missing/list', { params }),
   getDetail: (id) => api.get(`/missing/${id}`),
   reportSighting: (data) => api.post('/missing/sighting', data),
@@ -109,6 +121,16 @@ export const reportAPI = {
 };
 
 // ============================================
+// NOTIFICATION API
+// ============================================
+export const notificationAPI = {
+  getAll: (params) => api.get('/notifications', { params }),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
+};
+
+// ============================================
 // ADMIN API
 // ============================================
 export const adminAPI = {
@@ -119,6 +141,8 @@ export const adminAPI = {
   rejectVerification: (data) => adminApi.post('/admin/verification/reject', data),
   getReports: (params) => adminApi.get('/admin/reports', { params }),
   takeAction: (data) => adminApi.post('/admin/action', data),
+  getUsers: (params) => adminApi.get('/admin/users', { params }),
+  banUser: (data) => adminApi.post('/admin/user/ban', data),
 };
 
 export default api;

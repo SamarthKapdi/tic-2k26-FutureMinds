@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #E63946;
+  --color-primary-light: #FF6B6B;
+  --color-primary-dark: #C1121F;
+  --color-secondary: #457B9D;
+  --color-secondary-light: #6BA3BE;
+  --color-secondary-dark: #1D3557;
+  --color-accent: #F4A261;
+  --color-accent-light: #F7C59F;
+  --color-success: #2D6A4F;
+  --color-success-light: #52B788;
+  --color-warning: #E9C46A;
+  --color-danger: #E63946;
+  --color-bg: #FAFBFC;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F8F9FA;
+  --color-border: #E5E7EB;
+  --color-text: #1A1A2E;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Outfit', 'Inter', sans-serif;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Leaflet map fix */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 12px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Priority badges */
+.badge-critical {
+  background: linear-gradient(135deg, #E63946, #C1121F);
+  color: white;
+  animation: pulse-badge 2s infinite;
+}
+.badge-urgent {
+  background: linear-gradient(135deg, #F4A261, #E76F51);
+  color: white;
+}
+.badge-normal {
+  background: #E5E7EB;
+  color: #374151;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Glass effect card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+.glass-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+/* ── Page hero sections ── */
+.page-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 5rem 0 4rem;
+  background: linear-gradient(135deg, #FAFBFC 0%, rgba(230, 57, 70, 0.03) 50%, rgba(69, 123, 157, 0.03) 100%);
+}
+.page-hero::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(230, 57, 70, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.page-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -120px;
+  left: -120px;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(69, 123, 157, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Section divider ── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #E5E7EB 20%, #E5E7EB 80%, transparent);
+}
+
+/* ── Floating dots animation ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+.float-animation {
+  animation: float 6s ease-in-out infinite;
+}
+.float-animation-delay {
+  animation: float 6s ease-in-out 2s infinite;
+}
+
+/* ── Step connector line ── */
+.step-connector {
+  position: relative;
+}
+.step-connector::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -2rem;
+  width: 4rem;
+  height: 2px;
+  background: linear-gradient(90deg, #E5E7EB, transparent);
+}
+.step-connector:last-child::after {
+  display: none;
+}
+
+/* ── Gradient text utility ── */
+.gradient-text {
+  background: linear-gradient(135deg, #E63946 0%, #C1121F 40%, #457B9D 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

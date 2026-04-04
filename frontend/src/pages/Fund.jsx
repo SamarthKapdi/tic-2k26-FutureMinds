@@ -13,6 +13,8 @@ export default function Fund() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDonateModal, setShowDonateModal] = useState(null);
+  const [campaignImage, setCampaignImage] = useState(null);
+  const [proofFiles, setProofFiles] = useState([]);
 
   const [form, setForm] = useState({
     title: '', description: '', target_amount: '', category_id: '', urgency: 'normal',
@@ -23,6 +25,16 @@ export default function Fund() {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+
+  const resetCreateForm = () => {
+    setShowCreateModal(false);
+    setCampaignImage(null);
+    setProofFiles([]);
+    setForm({
+      title: '', description: '', target_amount: '', category_id: '', urgency: 'normal',
+    });
+    setFormError('');
+  };
 
   useEffect(() => {
     loadData();
@@ -49,9 +61,20 @@ export default function Fund() {
     setFormError('');
     setFormLoading(true);
     try {
-      await fundAPI.createCampaign(form);
+      const payload = new FormData();
+      payload.append('title', form.title);
+      payload.append('description', form.description);
+      payload.append('target_amount', form.target_amount);
+      payload.append('category_id', form.category_id);
+      payload.append('urgency', form.urgency);
+      if (campaignImage) {
+        payload.append('image', campaignImage);
+      }
+      proofFiles.forEach((file) => payload.append('proof_files', file));
+
+      await fundAPI.createCampaign(payload, true);
       setFormSuccess('Campaign created successfully!');
-      setShowCreateModal(false);
+      resetCreateForm();
       loadData();
       setTimeout(() => setFormSuccess(''), 3000);
     } catch (err) {
@@ -99,6 +122,15 @@ export default function Fund() {
             Start Campaign
           </Button>
         )}
+      </div>
+
+      {/* Process Info */}
+      <div className="bg-accent/5 border border-accent/20 rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-accent mb-2">Problem & Implementation</h2>
+        <p className="text-text-secondary leading-relaxed text-sm">
+          <strong>The Problem:</strong> Genuine families struggle to pay massive medical bills, but potential donors hesitate to help due to widespread fraudulent crowdfunding campaigns and lack of transparency.<br/>
+          <strong>Our Process:</strong> A user submits a fundraising request along with medical documents and hospital estimates. The campaign is systematically verified through cross-checks. Once approved, the verified campaign goes live for the community. All raised funds are transparently tracked and deployed directly to the authorized hospital or vendor, guaranteeing zero misuse and building absolute donor trust.
+        </p>
       </div>
 
       {/* Category Filter */}
@@ -185,7 +217,7 @@ export default function Fund() {
       <AnimatePresence>
         {showCreateModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowCreateModal(false)}>
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={resetCreateForm}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <h2 className="font-heading text-xl font-bold text-text mb-4">Start a Campaign</h2>
@@ -206,6 +238,33 @@ export default function Fund() {
                   <Select id="camp_cat" label="Category" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}
                     options={[{ value: '', label: 'Select Category' }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
                 )}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text">Campaign Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setCampaignImage(e.target.files?.[0] || null)}
+                    className="w-full text-sm text-text-secondary file:mr-4 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white file:font-medium hover:file:bg-primary/90"
+                  />
+                  <p className="text-xs text-text-muted">Optional banner image for the campaign card.</p>
+                    <Button type="button" variant="ghost" onClick={resetCreateForm}>Cancel</Button>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text">Proof Images / Documents</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    multiple
+                    onChange={(e) => setProofFiles(Array.from(e.target.files || []))}
+                    className="w-full text-sm text-text-secondary file:mr-4 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:py-2 file:text-white file:font-medium hover:file:bg-primary/90"
+                  />
+                  <p className="text-xs text-text-muted">Required. Add supporting documents or proof photos for verification.</p>
+                  {proofFiles.length > 0 && (
+                    <div className="space-y-1 text-xs text-text-secondary">
+                      {proofFiles.map((file) => <p key={`${file.name}-${file.lastModified}`}>• {file.name}</p>)}
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-3 pt-2">
                   <Button type="button" variant="ghost" onClick={() => setShowCreateModal(false)}>Cancel</Button>
                   <Button type="submit" loading={formLoading} className="flex-1">Create Campaign</Button>

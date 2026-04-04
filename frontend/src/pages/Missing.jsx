@@ -17,6 +17,7 @@ export default function Missing() {
     name: '', age: '', gender: '', description: '', latitude: '', longitude: '',
     last_seen_address: '', city: '', contact_number: '', urgency: 'normal', unique_identifiers: '',
   });
+  const [selectedImage, setSelectedImage] = useState(null);
   const [sightForm, setSightForm] = useState({
     latitude: '', longitude: '', address: '', description: '',
   });
@@ -56,9 +57,19 @@ export default function Missing() {
     setFormError('');
     setFormLoading(true);
     try {
-      await missingAPI.report(form);
+      const payload = new FormData();
+      Object.entries(form).forEach(([key, value]) => {
+        payload.append(key, value || '');
+      });
+
+      if (selectedImage) {
+        payload.append('image', selectedImage);
+      }
+
+      await missingAPI.report(payload, true);
       setFormSuccess('Missing person report created!');
       setShowReportModal(false);
+      setSelectedImage(null);
       loadCases();
       setTimeout(() => setFormSuccess(''), 3000);
     } catch (err) {
@@ -103,6 +114,15 @@ export default function Missing() {
         )}
       </div>
 
+      {/* Process Info */}
+      <div className="bg-secondary/5 border border-secondary/20 rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-secondary mb-2">Problem & Implementation</h2>
+        <p className="text-text-secondary leading-relaxed text-sm">
+          <strong>The Problem:</strong> When a person goes missing, the critical first few hours to find them are often lost due to disorganized search efforts and highly unstructured global alerts.<br/>
+          <strong>Our Process:</strong> A user files a missing person report with a photograph and last known location. Immediately, a targeted and localized alert is broadcast to all community members within that specific physical area. Local citizens effectively act as an active search force, logging any real-time sightings. This structured, localized reporting lets families and authorities rapidly track movements and organize a recovery.
+        </p>
+      </div>
+
       <AnimatePresence>
         {formSuccess && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -119,7 +139,11 @@ export default function Missing() {
           {cases.map((mp) => (
             <Card key={mp.id} className="!p-0 overflow-hidden">
               <div className="h-44 bg-gradient-to-br from-secondary/20 via-blue-50 to-indigo-50 flex items-center justify-center relative">
-                <User className="h-20 w-20 text-secondary/30" />
+                {mp.image_url ? (
+                  <img src={mp.image_url} alt={mp.name} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="h-20 w-20 text-secondary/30" />
+                )}
                 <div className="absolute top-3 right-3">
                   <Badge variant={mp.urgency}>{mp.urgency}</Badge>
                 </div>
@@ -181,6 +205,19 @@ export default function Missing() {
                   <Input id="mp_lng" label="Longitude" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} required />
                 </div>
                 <Input id="mp_contact" label="Contact Number" value={form.contact_number} onChange={(e) => setForm({ ...form, contact_number: e.target.value })} />
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-text" htmlFor="mp_image">Photo (optional)</label>
+                  <input
+                    id="mp_image"
+                    type="file"
+                    accept="image/*"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-surface text-sm text-text file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-primary file:text-white"
+                    onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
+                  />
+                  {selectedImage && (
+                    <p className="text-xs text-text-secondary">Selected: {selectedImage.name}</p>
+                  )}
+                </div>
                 <div className="space-y-1.5">
                   <label className="block text-sm font-medium text-text">Description</label>
                   <textarea id="mp_desc" className="w-full px-4 py-2.5 rounded-xl border border-border bg-surface text-text focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all h-20 resize-none"

@@ -1,115 +1,101 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Phone, Lock, ArrowRight } from 'lucide-react';
-import { Button, Input, Card } from '../components/ui';
+import { Shield, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Button, Card } from '../components/ui';
 import { authAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { signInWithGoogle } from '../lib/firebase';
+import { auth, googleProvider } from '../lib/firebase';
+import { signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 
 export default function Login() {
-  const [step, setStep] = useState('phone'); // phone | otp | register
-  const [phone, setPhone] = useState('+91');
-  const [otp, setOtp] = useState('');
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isNewUser, setIsNewUser] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSendOTP = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const { data } = await authAPI.sendOTP(phone);
-      if (data.success) {
-        setStep('otp');
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOTP = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const { data } = await authAPI.verifyOTP(phone, otp);
-      if (data.success) {
-        login(data.data.token, data.data.user);
-        if (data.data.isNewUser) {
-          setIsNewUser(true);
-          setStep('register');
-        } else {
-          navigate('/dashboard');
+  /* Handle Google redirect result on mount */
+  useEffect(() => {
+    const resolveRedirectLogin = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          const idToken = await result.user.getIdToken();
+          const { data } = await authAPI.firebaseLogin(idToken);
+          if (data.success) {
+            login(data.data.token, data.data.user);
+            navigate(data.data.isNewUser || !data.data.user?.name ? '/profile/setup' : '/dashboard');
+          }
         }
+      } catch (err) {
+        console.error('Google redirect error:', err);
+        setError(err.message || 'Google login failed');
       }
-    } catch (err) {
-      setError(err.response?.data?.message || 'OTP verification failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    resolveRedirectLogin();
+  }, []);
 
-  const handleRegister = async (e) => {
+  const handleEmailLogin = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+
+    if (!email.trim() || !password) {
+      setError('Email and password are required.');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const { data } = await authAPI.register({ name, email });
-      if (data.success) {
-        navigate('/dashboard');
+      const { data } = await authAPI.emailLogin({ email: email.trim(), password });
+
+      if (!data.success) {
+        throw new Error(data.message || 'Login failed');
       }
+
+      login(data.data.token, data.data.user);
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(err.response?.data?.message || err.message || 'Login failed');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
     setError('');
-    setLoading(true);
+    setIsGoogleLoading(true);
     try {
-      const user = await signInWithGoogle();
-      const { data } = await authAPI.googleLogin({
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName || 'Google User',
-        avatar_url: user.photoURL,
-      });
-      if (data.success) {
-        login(data.data.token, data.data.user);
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Google Sign-In failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+      googleProvider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      const { data } = await authAPI.firebaseLogin(idToken);
 
-  const handleDummyLogin = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const { data } = await authAPI.dummyLogin();
-      if (data.success) {
-        login(data.data.token, data.data.user);
-        navigate('/dashboard');
+      if (!data.success) {
+        throw new Error(data.message || 'Google login failed');
       }
+
+      login(data.data.token, data.data.user);
+      navigate(data.data.isNewUser || !data.data.user?.name ? '/profile/setup' : '/dashboard');
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Dummy login failed');
+      console.error('Google login error:', err);
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr) {
+          setError(redirectErr.message || 'Google redirect login failed');
+        }
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setError(`Add ${window.location.hostname} to Firebase Authorized Domains.`);
+      } else {
+        setError(err.response?.data?.message || err.message || 'Google login failed');
+      }
     } finally {
-      setLoading(false);
+      setIsGoogleLoading(false);
     }
   };
 
@@ -120,16 +106,13 @@ export default function Login() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
             <Shield className="h-8 w-8 text-white" />
           </div>
-          <h1 className="font-heading text-2xl font-bold text-text">Welcome to SAHYOG</h1>
-          <p className="text-text-secondary mt-1">
-            {step === 'phone' && 'Login with your WhatsApp number'}
-            {step === 'otp' && 'Enter the OTP sent to your WhatsApp'}
-            {step === 'register' && 'Complete your profile to get started'}
-          </p>
+          <h1 className="font-heading text-2xl font-bold text-text">Welcome Back</h1>
+          <p className="text-text-secondary mt-1">Sign in to your SAHYOG account</p>
         </div>
 
         <Card hover={false}>
@@ -139,120 +122,97 @@ export default function Login() {
             </div>
           )}
 
-          {step === 'phone' && (
-            <form onSubmit={handleSendOTP} className="space-y-5">
-              <Input
-                id="phone"
-                label="WhatsApp Phone Number"
-                type="tel"
-                placeholder="+919876543210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-              />
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200">
-                <Phone className="h-4 w-4 text-green-600 flex-shrink-0" />
-                <p className="text-xs text-green-700">
-                  We'll send a 6-digit OTP to your WhatsApp number for secure login.
-                </p>
+          {/* Email / Password Form */}
+          <form onSubmit={handleEmailLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="login-email" className="block text-sm font-medium text-text">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                <input
+                  id="login-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-surface text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                />
               </div>
-              <Button type="submit" loading={loading} className="w-full" size="lg">
-                Send OTP
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
-          )}
+            </div>
 
-          {step === 'otp' && (
-            <form onSubmit={handleVerifyOTP} className="space-y-5">
-              <div className="text-center mb-2">
-                <p className="text-sm text-text-secondary">OTP sent to <strong className="text-text">{phone}</strong></p>
-                <button type="button" onClick={() => setStep('phone')} className="text-xs text-primary hover:underline mt-1">
-                  Change number
+            <div className="space-y-1.5">
+              <label htmlFor="login-password" className="block text-sm font-medium text-text">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                <input
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-border bg-surface text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <Input
-                id="otp"
-                label="Enter OTP"
-                type="text"
-                placeholder="Enter 6-digit OTP"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                maxLength={6}
-                className="text-center text-2xl tracking-[0.5em] font-mono"
-                required
-              />
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-                <Lock className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                <p className="text-xs text-amber-700">
-                  OTP is valid for 5 minutes. Check your WhatsApp messages.
-                </p>
-              </div>
-              <Button type="submit" loading={loading} className="w-full" size="lg">
-                Verify & Login
-              </Button>
-            </form>
-          )}
+            </div>
 
-          {step === 'register' && (
-            <form onSubmit={handleRegister} className="space-y-5">
-              <Input
-                id="name"
-                label="Full Name"
-                type="text"
-                placeholder="Enter your full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-              <Input
-                id="email"
-                label="Email (optional)"
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <Button type="submit" loading={loading} className="w-full" size="lg">
-                Complete Registration
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
-          )}
+            <Button
+              type="submit"
+              loading={isLoading}
+              disabled={isGoogleLoading}
+              className="w-full mt-2"
+              size="lg"
+            >
+              Sign In
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </form>
 
-          {step === 'phone' && (
-            <>
-              <div className="relative mt-6 mb-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
-                </div>
-                <div className="relative flex justify-center text-sm font-medium leading-6">
-                  <span className="bg-white px-2 text-gray-500">Or continue with</span>
-                </div>
-              </div>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleGoogleLogin} 
-                loading={loading} 
-                className="w-full bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 mb-3"
-                size="lg"
-              >
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5 mr-2" />
-                Sign in with Google
-              </Button>
-              
-              <Button 
-                type="button" 
-                onClick={handleDummyLogin} 
-                loading={loading} 
-                className="w-full bg-gray-800 text-white hover:bg-gray-900"
-                size="lg"
-              >
-                Dummy Login (Dev Only)
-              </Button>
-            </>
-          )}
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-3 text-text-muted uppercase tracking-wider">or</span>
+            </div>
+          </div>
+
+          {/* Google Button */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleGoogleLogin}
+            loading={isGoogleLoading}
+            disabled={isLoading}
+            className="w-full"
+            size="lg"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+            </svg>
+            Continue with Google
+          </Button>
+
+          {/* Sign up link */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-text-secondary">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-primary font-semibold hover:underline">
+                Sign Up
+              </Link>
+            </p>
+          </div>
         </Card>
 
         <p className="text-center text-xs text-text-muted mt-6">

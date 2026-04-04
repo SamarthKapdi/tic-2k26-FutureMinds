@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, HandCoins, Search, MapPin, Shield, TrendingUp, Users, Activity } from 'lucide-react';
@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { StatCard, Card, Badge, Spinner } from '../components/ui';
 import { bloodAPI, fundAPI, missingAPI } from '../lib/api';
 import { timeAgo, formatCurrency, getUrgencyColor, getTrustScoreColor } from '../lib/utils';
+import TrustBadge from '../components/TrustBadge';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -14,25 +15,32 @@ export default function Dashboard() {
   const [recentMissing, setRecentMissing] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [reqRes, campRes, missRes] = await Promise.all([
-          bloodAPI.getRequests({ limit: 5 }),
-          fundAPI.listCampaigns({ limit: 5 }),
-          missingAPI.list({ limit: 5 }),
-        ]);
-        setRecentRequests(reqRes.data?.data?.requests || []);
-        setRecentCampaigns(campRes.data?.data?.campaigns || []);
-        setRecentMissing(missRes.data?.data?.missing_persons || []);
-      } catch (err) {
-        console.error('Dashboard load error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+  const loadData = useCallback(async () => {
+    try {
+      const [reqRes, campRes, missRes] = await Promise.all([
+        bloodAPI.getRequests({ limit: 5 }),
+        fundAPI.listCampaigns({ limit: 5 }),
+        missingAPI.list({ limit: 5 }),
+      ]);
+      setRecentRequests(reqRes.data?.data?.requests || []);
+      setRecentCampaigns(campRes.data?.data?.campaigns || []);
+      setRecentMissing(missRes.data?.data?.missing_persons || []);
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Real-time polling every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(loadData, 15000);
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   if (loading) return <Spinner size="lg" />;
 
@@ -48,10 +56,7 @@ export default function Dashboard() {
             <p className="text-text-secondary mt-1">Here's what's happening in your community</p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary/10">
-            <Shield className="h-4 w-4 text-secondary" />
-            <span className={`font-bold ${getTrustScoreColor(user?.trust_score || 50)}`}>
-              Trust: {user?.trust_score || 50}/100
-            </span>
+            <TrustBadge score={user?.trust_score || 50} size="md" />
             {user?.is_verified && <Badge variant="success">Verified</Badge>}
           </div>
         </div>
