@@ -38,6 +38,12 @@ const createCampaign = async (req, res) => {
       title, description, target_amount, category_id, image_url, urgency, end_date,
     });
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('fund:new_campaign', { ...campaign, creator_name: req.user.name });
+      io.emit('dashboard:refresh');
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Campaign created successfully',
@@ -98,6 +104,13 @@ const donate = async (req, res) => {
       donor_id: req.user ? req.user.id : null,
       is_anonymous,
     });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('fund:donation', { campaign_id, amount, donor_name: donor_name || 'Anonymous' });
+      io.emit('dashboard:refresh');
+      io.emit('leaderboard:refresh');
+    }
 
     return res.status(201).json({
       success: true,
