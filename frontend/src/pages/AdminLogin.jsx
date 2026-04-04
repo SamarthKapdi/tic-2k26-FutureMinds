@@ -30,6 +30,12 @@ export default function AdminLogin() {
     }
   };
 
+  const handleDummyAdminLogin = () => {
+    localStorage.setItem('sahyog_admin_token', 'dummy_admin_token');
+    localStorage.setItem('sahyog_admin', JSON.stringify({ id: 'dummy', name: 'Dev Admin', email: 'admin@sahyog.org', role: 'super_admin' }));
+    navigate('/admin/dashboard');
+  };
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
       <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
@@ -47,6 +53,10 @@ export default function AdminLogin() {
             <Input id="admin_pass" label="Password" type="password" placeholder="Enter password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             <Button type="submit" loading={loading} className="w-full" size="lg" variant="secondary">
               Login as Admin <ArrowRight className="h-4 w-4" />
+            </Button>
+            
+            <Button type="button" onClick={handleDummyAdminLogin} className="w-full bg-gray-800 text-white hover:bg-gray-900" size="lg">
+              Dummy Admin Login (Dev Only)
             </Button>
           </form>
         </Card>

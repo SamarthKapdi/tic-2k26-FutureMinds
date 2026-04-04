@@ -1,15 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, HandCoins, Search, MapPin, Shield, TrendingUp, Users, Activity } from 'lucide-react';
+import { Heart, HandCoins, Search, MapPin, Shield, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { StatCard, Card, Badge, Spinner } from '../components/ui';
 import { bloodAPI, fundAPI, missingAPI } from '../lib/api';
-import { timeAgo, formatCurrency, getUrgencyColor, getTrustScoreColor } from '../lib/utils';
-import TrustBadge from '../components/TrustBadge';
+import { timeAgo, formatCurrency, getTrustScoreColor } from '../lib/utils';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { on } = useSocket();
   const [recentRequests, setRecentRequests] = useState([]);
   const [recentCampaigns, setRecentCampaigns] = useState([]);
   const [recentMissing, setRecentMissing] = useState([]);
@@ -36,11 +37,13 @@ export default function Dashboard() {
     loadData();
   }, [loadData]);
 
-  // Real-time polling every 15 seconds
+  // ── Real-time: refresh dashboard on any action ──
   useEffect(() => {
-    const interval = setInterval(loadData, 15000);
-    return () => clearInterval(interval);
-  }, [loadData]);
+    const unsub = on('dashboard:refresh', () => {
+      loadData();
+    });
+    return unsub;
+  }, [on, loadData]);
 
   if (loading) return <Spinner size="lg" />;
 
@@ -56,7 +59,10 @@ export default function Dashboard() {
             <p className="text-text-secondary mt-1">Here's what's happening in your community</p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary/10">
-            <TrustBadge score={user?.trust_score || 50} size="md" />
+            <Shield className="h-4 w-4 text-secondary" />
+            <span className={`font-bold ${getTrustScoreColor(user?.trust_score || 50)}`}>
+              Trust: {user?.trust_score || 50}/100
+            </span>
             {user?.is_verified && <Badge variant="success">Verified</Badge>}
           </div>
         </div>
