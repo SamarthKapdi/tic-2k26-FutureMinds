@@ -1,56 +1,94 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import { motion } from 'framer-motion';
-import { MapPin, Heart, Search, Filter, RefreshCw, Eye } from 'lucide-react';
-import { Badge, Spinner, Card } from '../components/ui';
-import TrustBadge from '../components/TrustBadge';
+import { MapPin, Heart, Search, Filter, Navigation, Loader2 } from 'lucide-react';
+import { Card } from '../components/ui';
 import { bloodAPI, missingAPI } from '../lib/api';
-import { timeAgo, formatDate } from '../lib/utils';
+import { useSocket } from '../context/SocketContext';
+import { timeAgo } from '../lib/utils';
 import 'leaflet/dist/leaflet.css';
 
+// Custom marker icons using inline SVG data URIs
 const bloodIcon = new Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23E63946" width="32" height="32"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`),
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#E63946" width="32" height="32"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`),
   iconSize: [32, 32],
   iconAnchor: [16, 32],
   popupAnchor: [0, -32],
 });
 
 const missingIcon = new Icon({
-  iconUrl: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23457B9D" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`),
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#457B9D" width="32" height="32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`),
   iconSize: [32, 32],
   iconAnchor: [16, 32],
   popupAnchor: [0, -32],
 });
 
-function RecenterMap({ center }) {
+const userLocationIcon = new Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#3b82f6" width="24" height="24"><circle cx="12" cy="12" r="10" stroke="#ffffff" stroke-width="2"/></svg>`),
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+  popupAnchor: [0, -10],
+});
+
+// Component to handle map centering programmatically
+function MapController({ center, zoom, flyTo }) {
   const map = useMap();
   useEffect(() => {
-    if (center[0] !== 20.5937) {
-      map.setView(center, 12);
+    if (center && flyTo) {
+      map.flyTo(center, zoom, { duration: 1.5 });
+    } else if (center) {
+      map.setView(center, zoom);
     }
-  }, [center, map]);
+  }, [center, zoom, flyTo, map]);
   return null;
 }
+
+const DEFAULT_CENTER = [22.7196, 75.8577]; // Indore
 
 export default function MapView() {
   const [bloodRequests, setBloodRequests] = useState([]);
   const [missingCases, setMissingCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [center, setCenter] = useState([20.5937, 78.9629]);
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
-  const [isLive, setIsLive] = useState(true);
+  const [center, setCenter] = useState(DEFAULT_CENTER);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locatingUser, setLocatingUser] = useState(true);
+  const [flyTo, setFlyTo] = useState(false);
+  const { on } = useSocket();
+
+  // Watch user's real-time location continuously
+  useEffect(() => {
+    if (navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const loc = [pos.coords.latitude, pos.coords.longitude];
+          const isFirstLocation = !userLocation;
+          setUserLocation(loc);
+          if (isFirstLocation) {
+            setCenter(loc);
+            setLocatingUser(false);
+          }
+        },
+        () => setLocatingUser(false),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+      );
+      
+      return () => navigator.geolocation.clearWatch(watchId);
+    } else {
+      setLocatingUser(false);
+    }
+  }, [userLocation]); // intentionally empty to run once, userLoc inside check handles first set
 
   const loadData = useCallback(async () => {
+    setLoading(true);
     try {
       const [bloodRes, missRes] = await Promise.all([
-        bloodAPI.getRequests({ limit: 200 }),
-        missingAPI.list({ limit: 200 }),
+        bloodAPI.getRequests({ limit: 100 }),
+        missingAPI.list({ limit: 100 }),
       ]);
       setBloodRequests((bloodRes.data?.data?.requests || []).filter((r) => r.latitude && r.longitude));
       setMissingCases((missRes.data?.data?.missing_persons || []).filter((m) => m.latitude && m.longitude));
-      setLastRefresh(Date.now());
     } catch (err) {
       console.error(err);
     } finally {
@@ -58,31 +96,23 @@ export default function MapView() {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setCenter([pos.coords.latitude, pos.coords.longitude]);
-      });
-    }
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Auto-refresh every 15 seconds when live
+  // Real-time sync on new incidents
   useEffect(() => {
-    if (!isLive) return;
-    const interval = setInterval(loadData, 15000);
-    return () => clearInterval(interval);
-  }, [isLive, loadData]);
+    const unsub = on('dashboard:refresh', loadData);
+    return unsub;
+  }, [on, loadData]);
+
+  const goToMyLocation = () => {
+    if (userLocation) {
+      setFlyTo(true);
+      setCenter([...userLocation]); // force new reference to trigger effect
+    }
+  };
 
   const filteredBlood = filter === 'missing' ? [] : bloodRequests;
   const filteredMissing = filter === 'blood' ? [] : missingCases;
-  const totalMarkers = filteredBlood.length + filteredMissing.length;
-
-  const urgencyColors = {
-    critical: 'bg-red-500',
-    urgent: 'bg-amber-500',
-    normal: 'bg-gray-400',
-  };
 
   return (
     <div className="space-y-6">
@@ -90,19 +120,11 @@ export default function MapView() {
         <div>
           <h1 className="font-heading text-2xl sm:text-3xl font-bold text-text flex items-center gap-2">
             <MapPin className="h-7 w-7 text-green-600" />
-            Live Emergency Map
-            {isLive && (
-              <span className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-100 px-2.5 py-1 rounded-full">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                LIVE
-              </span>
-            )}
+            Emergency Map
           </h1>
-          <p className="text-text-secondary mt-1">
-            Real-time visualization of {totalMarkers} active emergencies
-          </p>
+          <p className="text-text-secondary mt-1">Real-time OpenStreetMap visualization with live syncing</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex gap-2">
           {[
             { value: 'all', label: 'All', icon: Filter },
             { value: 'blood', label: 'Blood', icon: Heart },
@@ -111,7 +133,7 @@ export default function MapView() {
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 filter === f.value ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:bg-surface-hover'
               }`}
             >
@@ -119,25 +141,7 @@ export default function MapView() {
               {f.label}
             </button>
           ))}
-          <button
-            onClick={() => setIsLive(!isLive)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-              isLive ? 'bg-green-100 text-green-700' : 'text-text-secondary hover:bg-surface-hover'
-            }`}
-          >
-            <RefreshCw className={`h-4 w-4 ${isLive ? 'animate-spin' : ''}`} style={isLive ? { animationDuration: '3s' } : {}} />
-            {isLive ? 'Live' : 'Paused'}
-          </button>
         </div>
-      </div>
-
-      {/* Process Info */}
-      <div className="bg-green-600/5 border border-green-600/20 rounded-2xl p-6">
-        <h2 className="text-lg font-bold text-green-700 mb-2">Problem & Implementation</h2>
-        <p className="text-text-secondary leading-relaxed text-sm">
-          <strong>The Problem:</strong> People inherently want to help during emergencies, but they usually lack geographic awareness of verified crises taking place within their own local vicinities.<br/>
-          <strong>Our Process:</strong> The system continuously aggregates all active, verified emergencies—like imminent blood requests and missing person tracking—onto one centralized, constantly updating framework. By mapping out crises visually and locally, we eliminate "situational blindness," allowing capable community volunteers to locate exact emergencies near them and coordinate rapid response right when and where it is critically needed.
-        </p>
       </div>
 
       {/* Stats */}
@@ -162,118 +166,114 @@ export default function MapView() {
         </Card>
         <Card className="!p-4" hover={false}>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-100"><Eye className="h-5 w-5 text-amber-600" /></div>
+            <div className="p-2 rounded-xl bg-green-100">
+              {locatingUser ? <Loader2 className="h-5 w-5 text-green-600 animate-spin" /> : <Navigation className="h-5 w-5 text-green-600" />}
+            </div>
             <div>
-              <p className="text-2xl font-bold text-text">{totalMarkers}</p>
-              <p className="text-xs text-text-secondary">Active Markers</p>
+              <p className="text-2xl font-bold text-text">{userLocation ? 'Live' : 'Off'}</p>
+              <p className="text-xs text-text-secondary">Your Location</p>
             </div>
           </div>
         </Card>
         <Card className="!p-4" hover={false}>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-green-100"><RefreshCw className="h-5 w-5 text-green-600" /></div>
+            <div className="p-2 rounded-xl bg-purple-100"><MapPin className="h-5 w-5 text-purple-600" /></div>
             <div>
-              <p className="text-sm font-bold text-text">{new Date(lastRefresh).toLocaleTimeString()}</p>
-              <p className="text-xs text-text-secondary">Last Updated</p>
+              <p className="text-2xl font-bold text-text">{bloodRequests.length + missingCases.length}</p>
+              <p className="text-xs text-text-secondary">Total Markers</p>
             </div>
           </div>
         </Card>
       </div>
 
       {/* Map */}
-      {loading ? <Spinner size="lg" /> : (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="h-[500px] sm:h-[600px] rounded-2xl overflow-hidden border border-border shadow-sm"
-        >
-          <MapContainer center={center} zoom={5} className="h-full w-full" scrollWheelZoom={true}>
-            <RecenterMap center={center} />
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {filteredBlood.map((req) => (
-              <Marker key={`blood-${req.id}`} position={[parseFloat(req.latitude), parseFloat(req.longitude)]} icon={bloodIcon}>
-                <Popup maxWidth={280}>
-                  <div className="min-w-[220px] p-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Heart className="h-4 w-4 text-red-500" />
-                      <strong className="text-sm text-red-600">Blood Request</strong>
-                      <span className={`ml-auto w-2.5 h-2.5 rounded-full ${urgencyColors[req.urgency]}`} title={req.urgency} />
-                    </div>
-                    <p className="text-sm font-bold">{req.patient_name}</p>
-                    <div className="mt-1.5 space-y-0.5 text-xs text-gray-600">
-                      <p>🩸 Blood Group: <strong className="text-red-600">{req.blood_group}</strong> ({req.units_needed || 1} units)</p>
-                      {req.hospital_name && <p>🏥 {req.hospital_name}</p>}
-                      {req.city && <p>📍 {req.city}</p>}
-                      {req.contact_number && <p>📞 {req.contact_number}</p>}
-                      {req.distance_km && <p>📏 {req.distance_km} km away</p>}
-                    </div>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                      <span className="text-[11px] text-gray-400">{timeAgo(req.created_at)}</span>
-                      {req.trust_score !== undefined && (
-                        <span className="text-[11px]">Trust: {req.trust_score}/100</span>
-                      )}
-                    </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative h-[500px] sm:h-[600px] rounded-2xl overflow-hidden border border-border shadow-sm z-0"
+      >
+        <MapContainer center={center} zoom={userLocation ? 14 : 5} className="h-full w-full" scrollWheelZoom={true}>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          />
+          <MapController center={center} zoom={14} flyTo={flyTo} />
+          
+          {/* User's current location marker */}
+          {userLocation && (
+            <Marker position={userLocation} icon={userLocationIcon}>
+              <Popup>
+                <div className="text-center p-1">
+                  <p className="font-semibold">You are here</p>
+                  <p className="text-xs text-text-secondary mt-1">Live Location Tracking</p>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
+          {/* Blood request markers */}
+          {filteredBlood.map((req) => (
+            <Marker key={`blood-${req.id}`} position={[parseFloat(req.latitude), parseFloat(req.longitude)]} icon={bloodIcon}>
+              <Popup>
+                <div className="min-w-[200px] p-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart className="h-4 w-4 text-primary" />
+                    <strong className="text-sm">Blood Request</strong>
                   </div>
-                </Popup>
-              </Marker>
-            ))}
-            {filteredMissing.map((mp) => (
-              <Marker key={`missing-${mp.id}`} position={[parseFloat(mp.latitude), parseFloat(mp.longitude)]} icon={missingIcon}>
-                <Popup maxWidth={280}>
-                  <div className="min-w-[220px] p-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Search className="h-4 w-4 text-blue-500" />
-                      <strong className="text-sm text-blue-600">Missing Person</strong>
-                      <span className={`ml-auto w-2.5 h-2.5 rounded-full ${urgencyColors[mp.urgency]}`} title={mp.urgency} />
-                    </div>
-                    <p className="text-sm font-bold">{mp.name}</p>
-                    {mp.image_url && (
-                      <img src={mp.image_url} alt={mp.name} className="w-full h-24 object-cover rounded mt-1" />
-                    )}
-                    <div className="mt-1.5 space-y-0.5 text-xs text-gray-600">
-                      {mp.age && <p>👤 Age: {mp.age} {mp.gender && `| ${mp.gender}`}</p>}
-                      {mp.last_seen_address && <p>📍 Last seen: {mp.last_seen_address}</p>}
-                      {mp.city && <p>🏙️ {mp.city}</p>}
-                      {mp.contact_number && <p>📞 {mp.contact_number}</p>}
-                      <p>👁️ Sightings: <strong>{mp.sighting_count || 0}</strong></p>
-                      {mp.distance_km && <p>📏 {mp.distance_km} km away</p>}
-                    </div>
-                    {mp.description && (
-                      <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{mp.description}</p>
-                    )}
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                      <span className="text-[11px] text-gray-400">{timeAgo(mp.created_at)}</span>
-                      {mp.trust_score !== undefined && (
-                        <span className="text-[11px]">Trust: {mp.trust_score}/100</span>
-                      )}
-                    </div>
+                  <p className="text-sm font-semibold">{req.patient_name}</p>
+                  <p className="text-xs text-gray-600">Blood Group: <strong>{req.blood_group}</strong></p>
+                  {req.hospital_name && <p className="text-xs text-gray-600">Hospital: {req.hospital_name}</p>}
+                  <p className="text-xs text-gray-500 mt-1">{timeAgo(req.created_at)}</p>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          {/* Missing person markers */}
+          {filteredMissing.map((mp) => (
+            <Marker key={`missing-${mp.id}`} position={[parseFloat(mp.latitude), parseFloat(mp.longitude)]} icon={missingIcon}>
+              <Popup>
+                <div className="min-w-[200px] p-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Search className="h-4 w-4 text-secondary" />
+                    <strong className="text-sm">Missing Person</strong>
                   </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
-        </motion.div>
-      )}
+                  <p className="text-sm font-semibold">{mp.name}</p>
+                  {mp.age && <p className="text-xs text-gray-600">Age: {mp.age}</p>}
+                  {mp.city && <p className="text-xs text-gray-600">Last seen: {mp.city}</p>}
+                  <p className="text-xs text-gray-500 mt-1">{timeAgo(mp.created_at)}</p>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+
+        {/* My Location button overlay */}
+        {userLocation && (
+          <button
+            onClick={goToMyLocation}
+            className="absolute bottom-6 right-6 p-3 bg-white rounded-xl shadow-lg border border-border hover:bg-surface-hover transition-all cursor-pointer"
+            style={{ zIndex: 1000 }}
+            title="Go to my live location"
+          >
+            <Navigation className="h-5 w-5 text-blue-500" />
+          </button>
+        )}
+      </motion.div>
 
       {/* Legend */}
       <div className="flex items-center gap-6 text-sm text-text-secondary">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-primary" />
-          <span>Blood Requests ({filteredBlood.length})</span>
+          <span>Blood Requests</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full bg-secondary" />
-          <span>Missing Persons ({filteredMissing.length})</span>
+          <span>Missing Persons</span>
         </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="flex gap-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Critical
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ml-2" /> Urgent
-            <span className="w-2.5 h-2.5 rounded-full bg-gray-400 ml-2" /> Normal
-          </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-blue-500" />
+          <span>Your Location</span>
         </div>
       </div>
     </div>

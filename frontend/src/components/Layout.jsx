@@ -1,149 +1,259 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import { useState, useEffect, useRef } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
 import {
-  Heart, HandCoins, Search, MapPin, LayoutDashboard,
-  Menu, X, LogOut, User, Shield, Trophy, Settings as SettingsIcon,
-  ChevronRight, Globe, MessageSquare, Link2, Mail,
-} from 'lucide-react';
-import NotificationBell from './NotificationBell';
+  Heart,
+  HandCoins,
+  Search,
+  MapPin,
+  LayoutDashboard,
+  Menu,
+  X,
+  LogOut,
+  User,
+  Shield,
+  Trophy,
+  Settings as SettingsIcon,
+  ChevronRight,
+  ChevronDown,
+  Globe,
+  MessageSquare,
+  Link2,
+  Mail,
+} from 'lucide-react'
+import NotificationBell from './NotificationBell'
 
-/* ── Authenticated nav links (shown after login) ── */
-const appNavLinks = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/blood', label: 'Blood', icon: Heart },
-  { path: '/fund', label: 'Fund', icon: HandCoins },
-  { path: '/missing', label: 'Missing', icon: Search },
-  { path: '/map', label: 'Map', icon: MapPin },
-  { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-];
-
-/* ── Public nav links (shown before login) ── */
-const publicNavLinks = [
+/* ── Public nav links (shown in navbar for everyone) ── */
+const publicLinks = [
   { path: '/', label: 'Home' },
   { path: '/about', label: 'About' },
   { path: '/mission', label: 'Mission' },
   { path: '/team', label: 'Team' },
   { path: '/contact', label: 'Contact' },
-];
+]
+
+/* ── Authenticated nav links ── */
+const authLinks = [
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/blood', label: 'Blood', icon: Heart },
+  { path: '/fund', label: 'Fund', icon: HandCoins },
+  { path: '/missing', label: 'Missing', icon: Search },
+  { path: '/map', label: 'Map', icon: MapPin },
+  { path: '/leaderboard', label: 'Board', icon: Trophy },
+]
+
+/* ── Footer link groups ── */
+const footerGroups = [
+  {
+    title: 'Platform',
+    links: [
+      { to: '/info/blood', label: 'Blood Donation' },
+      { to: '/info/fund', label: 'Fundraising' },
+      { to: '/info/missing', label: 'Missing Persons' },
+      { to: '/info/map', label: 'Live Map' },
+    ],
+  },
+  {
+    title: 'Company',
+    links: [
+      { to: '/about', label: 'About Us' },
+      { to: '/mission', label: 'Our Mission' },
+      { to: '/team', label: 'Team' },
+      { to: '/contact', label: 'Contact' },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { to: '#', label: 'Privacy Policy' },
+      { to: '#', label: 'Terms of Service' },
+      { to: '#', label: 'Cookie Policy' },
+    ],
+  },
+]
 
 export default function Layout({ children }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const { user, logout, isAuthenticated } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const { user, logout, isAuthenticated } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const profileMenuRef = useRef(null)
 
-  /* Track scroll for navbar shadow */
+  /* ── Scroll-aware navbar shadow ── */
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+    const onScroll = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-  /* Close mobile menu on route change */
+  /* ── Auto-close mobile menu on route change ── */
   useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
+    setMobileOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    setProfileMenuOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target)
+      ) {
+        setProfileMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+    logout()
+    navigate('/')
+  }
 
-  const isActive = (path) =>
-    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
-
-  const isLanding = location.pathname === '/';
+  const isLanding = location.pathname === '/'
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
-      {/* ─────────── Navbar ─────────── */}
+    <div className="min-h-screen bg-bg">
+      {/* ══════════════════════════════════════════
+          NAVBAR
+         ══════════════════════════════════════════ */}
       <nav
         className={`sticky top-0 z-50 transition-all duration-300 ${
           scrolled
-            ? 'bg-white/95 backdrop-blur-xl shadow-md border-b border-border'
+            ? 'bg-white/95 backdrop-blur-xl shadow-sm border-b border-border'
             : 'bg-white/80 backdrop-blur-xl border-b border-transparent'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo ── Left */}
-            <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Shield className="h-5 w-5 text-white" />
               </div>
-              <span className="font-heading text-xl font-bold text-text tracking-tight">
+              <span className="font-heading text-xl font-bold text-text">
                 SAHYOG
               </span>
             </Link>
 
-            {/* Desktop Nav ── Center */}
+            {/* ── Desktop navigation ── */}
             <div className="hidden md:flex items-center gap-1">
               {isAuthenticated
-                ? appNavLinks.map((link) => {
-                    const Icon = link.icon;
+                ? /* Authenticated: show module links */
+                  authLinks.map((link) => {
+                    const Icon = link.icon
+                    const isActive = location.pathname === link.path
                     return (
                       <Link
                         key={link.path}
                         to={link.path}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                          isActive(link.path)
+                        className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          isActive
                             ? 'bg-primary/10 text-primary'
                             : 'text-text-secondary hover:text-text hover:bg-surface-hover'
                         }`}
                       >
                         <Icon className="h-4 w-4" />
                         {link.label}
+                        {isActive && (
+                          <motion.div
+                            layoutId="navbar-indicator"
+                            className="absolute -bottom-[1px] left-3 right-3 h-[2px] bg-primary rounded-full"
+                          />
+                        )}
                       </Link>
-                    );
+                    )
                   })
-                : publicNavLinks.map((link) => (
-                    <Link
-                      key={link.path}
-                      to={link.path}
-                      className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                        isActive(link.path)
-                          ? 'text-primary'
-                          : 'text-text-secondary hover:text-text hover:bg-surface-hover'
-                      }`}
-                    >
-                      {link.label}
-                      {isActive(link.path) && (
-                        <motion.div
-                          layoutId="nav-indicator"
-                          className="absolute -bottom-[1px] left-3 right-3 h-0.5 bg-primary rounded-full"
-                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                        />
-                      )}
-                    </Link>
-                  ))}
+                : /* Guest: show public links */
+                  publicLinks.map((link) => {
+                    const isActive = location.pathname === link.path
+                    return (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          isActive
+                            ? 'text-primary'
+                            : 'text-text-secondary hover:text-text hover:bg-surface-hover'
+                        }`}
+                      >
+                        {link.label}
+                        {isActive && (
+                          <motion.div
+                            layoutId="navbar-indicator"
+                            className="absolute -bottom-[1px] left-3 right-3 h-[2px] bg-primary rounded-full"
+                          />
+                        )}
+                      </Link>
+                    )
+                  })}
             </div>
 
-            {/* Right Side ── CTA / Profile */}
+            {/* ── Right side ── */}
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
                 <>
-                  <div className="hidden sm:block">
-                    <NotificationBell />
-                  </div>
-                  <Link
-                    to="/profile/setup"
-                    className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-hover hover:bg-primary/10 transition-colors"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-secondary to-secondary-dark flex items-center justify-center">
-                      <User className="h-4 w-4 text-white" />
-                    </div>
-                    <span className="text-sm font-medium text-text">{user?.name || 'User'}</span>
-                  </Link>
+                  <NotificationBell />
                   <Link
                     to="/settings"
-                    className="hidden sm:flex p-2 rounded-xl text-text-secondary hover:bg-surface-hover transition-colors"
+                    className="relative p-2 rounded-xl text-text-secondary hover:bg-surface-hover transition-colors hidden sm:block"
                     title="Settings"
                   >
                     <SettingsIcon className="h-5 w-5" />
                   </Link>
+                  <div
+                    className="relative hidden sm:block"
+                    ref={profileMenuRef}
+                  >
+                    <button
+                      onClick={() => setProfileMenuOpen((prev) => !prev)}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-hover hover:bg-surface transition-colors"
+                      title="Open profile menu"
+                    >
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-secondary to-secondary-dark flex items-center justify-center overflow-hidden">
+                        {user?.avatar_url ? (
+                          <img
+                            src={user.avatar_url}
+                            alt={user?.name || 'User'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="h-4 w-4 text-white" />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-text max-w-[100px] truncate">
+                        {user?.name || 'User'}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-text-muted" />
+                    </button>
+
+                    <AnimatePresence>
+                      {profileMenuOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                          transition={{ duration: 0.12 }}
+                          className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-white shadow-lg z-50 p-1"
+                        >
+                          <Link
+                            to="/settings"
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text hover:bg-surface-hover"
+                          >
+                            <User className="h-4 w-4" />
+                            Edit Profile
+                          </Link>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                   <button
                     onClick={handleLogout}
                     className="p-2 rounded-xl text-text-secondary hover:bg-red-50 hover:text-danger transition-colors cursor-pointer"
@@ -156,7 +266,7 @@ export default function Layout({ children }) {
                 <div className="hidden sm:flex gap-2">
                   <Link
                     to="/login"
-                    className="px-5 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text hover:bg-surface-hover transition-all border border-border"
+                    className="px-4 py-2 rounded-xl text-sm font-medium text-text-secondary hover:text-text hover:bg-surface-hover transition-all"
                   >
                     Login
                   </Link>
@@ -174,33 +284,37 @@ export default function Layout({ children }) {
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="md:hidden p-2 rounded-xl text-text-secondary hover:bg-surface-hover cursor-pointer"
               >
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {mobileOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
               </button>
             </div>
           </div>
         </div>
 
-        {/* ─── Mobile Menu ─── */}
+        {/* ── Mobile Menu ── */}
         <AnimatePresence>
           {mobileOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              className="md:hidden border-t border-border bg-white overflow-hidden"
+              className="md:hidden border-t border-border bg-white"
             >
               <div className="px-4 py-3 space-y-1">
                 {isAuthenticated ? (
                   <>
-                    {appNavLinks.map((link) => {
-                      const Icon = link.icon;
+                    {authLinks.map((link) => {
+                      const Icon = link.icon
+                      const isActive = location.pathname === link.path
                       return (
                         <Link
                           key={link.path}
                           to={link.path}
                           className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                            isActive(link.path)
+                            isActive
                               ? 'bg-primary/10 text-primary'
                               : 'text-text-secondary hover:bg-surface-hover'
                           }`}
@@ -208,22 +322,8 @@ export default function Layout({ children }) {
                           <Icon className="h-5 w-5" />
                           {link.label}
                         </Link>
-                      );
+                      )
                     })}
-                    <Link
-                      to="/profile/setup"
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-surface-hover transition-all"
-                    >
-                      <User className="h-5 w-5" />
-                      Profile
-                    </Link>
-                    <Link
-                      to="/settings"
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-surface-hover transition-all"
-                    >
-                      <SettingsIcon className="h-5 w-5" />
-                      Settings
-                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-danger hover:bg-red-50 transition-all cursor-pointer"
@@ -234,24 +334,23 @@ export default function Layout({ children }) {
                   </>
                 ) : (
                   <>
-                    {publicNavLinks.map((link) => (
+                    {publicLinks.map((link) => (
                       <Link
                         key={link.path}
                         to={link.path}
-                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                          isActive(link.path)
+                        className={`block px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                          location.pathname === link.path
                             ? 'bg-primary/10 text-primary'
                             : 'text-text-secondary hover:bg-surface-hover'
                         }`}
                       >
                         {link.label}
-                        <ChevronRight className="h-4 w-4 opacity-40" />
                       </Link>
                     ))}
-                    <div className="pt-3 border-t border-border mt-2 space-y-2">
+                    <div className="pt-2 space-y-2">
                       <Link
                         to="/login"
-                        className="block px-4 py-3 rounded-xl text-sm font-medium text-center border border-border text-text-secondary hover:bg-surface-hover transition-all"
+                        className="block px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:bg-surface-hover transition-all text-center"
                       >
                         Login
                       </Link>
@@ -270,35 +369,39 @@ export default function Layout({ children }) {
         </AnimatePresence>
       </nav>
 
-      {/* ─────────── Main Content ─────────── */}
-      <main className="flex-1">
-        {isLanding ? (
-          children
-        ) : (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </div>
-        )}
+      {/* ══════════════════════════════════════════
+          MAIN CONTENT
+         ══════════════════════════════════════════ */}
+      <main
+        className={
+          isLanding ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'
+        }
+      >
+        {children}
       </main>
 
-      {/* ─────────── Footer ─────────── */}
-      <footer className="border-t border-border mt-auto bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Main footer grid */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 py-16">
+      {/* ══════════════════════════════════════════
+          FOOTER
+         ══════════════════════════════════════════ */}
+      <footer className="border-t border-border mt-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="grid grid-cols-2 md:grid-cols-12 gap-8">
             {/* Brand column */}
-            <div className="md:col-span-4">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
-                  <Shield className="h-4 w-4 text-white" />
+            <div className="col-span-2 md:col-span-4">
+              <Link to="/" className="flex items-center gap-2.5 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-white" />
                 </div>
-                <span className="font-heading font-bold text-text text-lg">SAHYOG</span>
-              </div>
-              <p className="text-sm text-text-secondary leading-relaxed mb-6 max-w-xs">
-                India's first AI-powered emergency and trust network. Connecting verified donors, transparent fundraising, and community-driven search — all in one platform.
+                <span className="font-heading text-xl font-bold text-text">
+                  SAHYOG
+                </span>
+              </Link>
+              <p className="text-sm text-text-secondary leading-relaxed mb-4 max-w-xs">
+                India's first AI-powered emergency & trust network. Connecting
+                people in crisis with those who can help.
               </p>
-              <div className="flex items-center gap-3">
-                {[MessageSquare, Globe, Link2, Mail].map((Icon, i) => (
+              <div className="flex gap-3">
+                {[Globe, MessageSquare, Link2, Mail].map((Icon, i) => (
                   <a
                     key={i}
                     href="#"
@@ -310,58 +413,64 @@ export default function Layout({ children }) {
               </div>
             </div>
 
-            {/* Platform links */}
-            <div className="md:col-span-2">
-              <h4 className="font-bold text-text mb-4 text-sm uppercase tracking-wider">Platform</h4>
-              <ul className="space-y-2.5">
-                <li><Link to="/info/blood" className="text-sm text-text-secondary hover:text-primary transition-colors">Blood Donation</Link></li>
-                <li><Link to="/info/fund" className="text-sm text-text-secondary hover:text-primary transition-colors">Fundraising</Link></li>
-                <li><Link to="/info/missing" className="text-sm text-text-secondary hover:text-primary transition-colors">Missing Persons</Link></li>
-                <li><Link to="/info/map" className="text-sm text-text-secondary hover:text-primary transition-colors">Live Map</Link></li>
-              </ul>
-            </div>
+            {/* Link groups */}
+            {footerGroups.map((group) => (
+              <div key={group.title} className="col-span-1 md:col-span-2">
+                <h4 className="font-heading font-semibold text-text text-sm mb-4">
+                  {group.title}
+                </h4>
+                <ul className="space-y-2.5">
+                  {group.links.map((link) => (
+                    <li key={link.label}>
+                      <Link
+                        to={link.to}
+                        className="text-sm text-text-secondary hover:text-primary transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
 
-            {/* Company links */}
-            <div className="md:col-span-2">
-              <h4 className="font-bold text-text mb-4 text-sm uppercase tracking-wider">Company</h4>
-              <ul className="space-y-2.5">
-                <li><Link to="/about" className="text-sm text-text-secondary hover:text-primary transition-colors">About Us</Link></li>
-                <li><Link to="/mission" className="text-sm text-text-secondary hover:text-primary transition-colors">Our Mission</Link></li>
-                <li><Link to="/team" className="text-sm text-text-secondary hover:text-primary transition-colors">Our Team</Link></li>
-                <li><Link to="/contact" className="text-sm text-text-secondary hover:text-primary transition-colors">Contact</Link></li>
-              </ul>
-            </div>
-
-            {/* Resources links */}
-            <div className="md:col-span-2">
-              <h4 className="font-bold text-text mb-4 text-sm uppercase tracking-wider">Resources</h4>
-              <ul className="space-y-2.5">
-                <li><Link to="/about" className="text-sm text-text-secondary hover:text-primary transition-colors">How It Works</Link></li>
-                <li><Link to="/leaderboard" className="text-sm text-text-secondary hover:text-primary transition-colors">Leaderboard</Link></li>
-              </ul>
-            </div>
-
-            {/* Legal */}
-            <div className="md:col-span-2">
-              <h4 className="font-bold text-text mb-4 text-sm uppercase tracking-wider">Legal</h4>
-              <ul className="space-y-2.5">
-                <li><Link to="#" className="text-sm text-text-secondary hover:text-primary transition-colors">Privacy Policy</Link></li>
-                <li><Link to="#" className="text-sm text-text-secondary hover:text-primary transition-colors">Terms of Service</Link></li>
-              </ul>
+            {/* Newsletter */}
+            <div className="col-span-2">
+              <h4 className="font-heading font-semibold text-text text-sm mb-4">
+                Stay Updated
+              </h4>
+              <p className="text-sm text-text-secondary mb-3">
+                Get updates on emergency response and community safety.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  className="flex-1 px-3 py-2 rounded-xl border border-border bg-surface text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
+                <button className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-dark transition-colors cursor-pointer">
+                  Join
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-border py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-text-muted">
-              © {new Date().getFullYear()} SAHYOG — Built with ❤️ by Team FutureMinds
+          <div className="section-divider mt-10 mb-6" />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-text-muted">
+              © {new Date().getFullYear()} SAHYOG — AI Powered Emergency & Trust
+              Network
             </p>
             <p className="text-xs text-text-muted">
-              When every second counts, trust SAHYOG.
+              Built with ❤️ by{' '}
+              <span className="font-semibold text-text-secondary">
+                Team FutureMinds
+              </span>
             </p>
           </div>
         </div>
       </footer>
     </div>
-  );
+  )
 }

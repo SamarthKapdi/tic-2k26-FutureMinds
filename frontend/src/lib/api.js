@@ -1,58 +1,61 @@
-import axios from 'axios';
+import axios from 'axios'
 
-const API_BASE = '/api';
+const API_BASE = '/api'
 
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
-});
+})
 
 // Request interceptor: attach JWT token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('sahyog_token');
+  const token = localStorage.getItem('sahyog_token')
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`
   }
-  return config;
-});
+  return config
+})
 
 // Response interceptor: handle 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('sahyog_token');
-      localStorage.removeItem('sahyog_user');
-      window.location.href = '/login';
+    const requestUrl = error?.config?.url || ''
+    const isAuthEndpoint = requestUrl.startsWith('/auth/')
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      localStorage.removeItem('sahyog_token')
+      localStorage.removeItem('sahyog_user')
+      window.location.href = '/login'
     }
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)
 
 // Admin API (separate instance with admin token)
 const adminApi = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
-});
+})
 
 adminApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('sahyog_admin_token');
+  const token = localStorage.getItem('sahyog_admin_token')
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`
   }
-  return config;
-});
+  return config
+})
 
 adminApi.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('sahyog_admin_token');
-      window.location.href = '/admin/login';
+      localStorage.removeItem('sahyog_admin_token')
+      window.location.href = '/admin/login'
     }
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)
 
 // ============================================
 // AUTH API
@@ -60,20 +63,26 @@ adminApi.interceptors.response.use(
 export const authAPI = {
   emailRegister: (data) => api.post('/auth/register', data),
   emailLogin: (data) => api.post('/auth/login', data),
-  firebaseLogin: (idToken) => api.post('/auth/firebase-login', { idToken }),
-  completeProfile: (data) => api.post('/auth/complete-profile', data),
-};
+  googleLogin: (idToken) => api.post('/auth/google', { idToken }),
+}
 
 // ============================================
 // USER API
 // ============================================
 export const userAPI = {
   getProfile: () => api.get('/user/profile'),
-  updateProfile: (data) => api.put('/user/update', data),
+  updateProfile: (data) =>
+    api.put(
+      '/user/update',
+      data,
+      data instanceof FormData
+        ? { headers: { 'Content-Type': 'multipart/form-data' } }
+        : undefined
+    ),
   getLeaderboard: (params) => api.get('/user/leaderboard', { params }),
   getSettings: () => api.get('/user/settings'),
   updateSettings: (data) => api.put('/user/settings', data),
-};
+}
 
 // ============================================
 // BLOOD API
@@ -85,32 +94,35 @@ export const bloodAPI = {
   respond: (data) => api.post('/blood/respond', data),
   getHistory: () => api.get('/blood/history'),
   getRequests: (params) => api.get('/blood/requests', { params }),
-};
+}
 
 // ============================================
 // FUND API
 // ============================================
 export const fundAPI = {
   getCategories: () => api.get('/fund/categories'),
-  createCampaign: (data, isMultipart = false) => api.post('/fund/campaign/create', data, isMultipart ? {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  } : undefined),
+  createCampaign: (data) => api.post('/fund/campaign/create', data),
   listCampaigns: (params) => api.get('/fund/campaign/list', { params }),
   donate: (data) => api.post('/fund/donate', data),
   getTransactions: (params) => api.get('/fund/transactions', { params }),
-};
+}
 
 // ============================================
 // MISSING API
 // ============================================
 export const missingAPI = {
-  report: (data, isMultipart = false) => api.post('/missing/report', data, isMultipart ? {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  } : undefined),
+  report: (data) =>
+    api.post(
+      '/missing/report',
+      data,
+      data instanceof FormData
+        ? { headers: { 'Content-Type': 'multipart/form-data' } }
+        : undefined
+    ),
   list: (params) => api.get('/missing/list', { params }),
   getDetail: (id) => api.get(`/missing/${id}`),
   reportSighting: (data) => api.post('/missing/sighting', data),
-};
+}
 
 // ============================================
 // REPORT API
@@ -118,17 +130,7 @@ export const missingAPI = {
 export const reportAPI = {
   create: (data) => api.post('/report/create', data),
   list: (params) => api.get('/report/list', { params }),
-};
-
-// ============================================
-// NOTIFICATION API
-// ============================================
-export const notificationAPI = {
-  getAll: (params) => api.get('/notifications', { params }),
-  getUnreadCount: () => api.get('/notifications/unread-count'),
-  markAsRead: (id) => api.put(`/notifications/${id}/read`),
-  markAllAsRead: () => api.put('/notifications/read-all'),
-};
+}
 
 // ============================================
 // ADMIN API
@@ -136,13 +138,14 @@ export const notificationAPI = {
 export const adminAPI = {
   login: (data) => adminApi.post('/admin/auth/login', data),
   getDashboard: () => adminApi.get('/admin/dashboard'),
-  getVerifications: (params) => adminApi.get('/admin/verifications', { params }),
-  approveVerification: (data) => adminApi.post('/admin/verification/approve', data),
-  rejectVerification: (data) => adminApi.post('/admin/verification/reject', data),
+  getVerifications: (params) =>
+    adminApi.get('/admin/verifications', { params }),
+  approveVerification: (data) =>
+    adminApi.post('/admin/verification/approve', data),
+  rejectVerification: (data) =>
+    adminApi.post('/admin/verification/reject', data),
   getReports: (params) => adminApi.get('/admin/reports', { params }),
   takeAction: (data) => adminApi.post('/admin/action', data),
-  getUsers: (params) => adminApi.get('/admin/users', { params }),
-  banUser: (data) => adminApi.post('/admin/user/ban', data),
-};
+}
 
-export default api;
+export default api
