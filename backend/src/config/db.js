@@ -2,14 +2,11 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  database: process.env.DB_NAME || 'sahyog',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000,
 });
 
 pool.on('connect', () => {
@@ -78,8 +75,9 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         name VARCHAR(255),
-        phone VARCHAR(20) UNIQUE NOT NULL,
-        email VARCHAR(255),
+        phone VARCHAR(20) UNIQUE,
+        email VARCHAR(255) UNIQUE,
+        password_hash VARCHAR(255),
         avatar_url TEXT,
         location GEOGRAPHY(Point, 4326),
         address TEXT,
@@ -88,6 +86,24 @@ const initializeDatabase = async () => {
         trust_score INTEGER DEFAULT 50 CHECK (trust_score >= 0 AND trust_score <= 100),
         is_verified BOOLEAN DEFAULT false,
         is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+
+    // Migrations for existing DBs
+    await client.query('ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;').catch(() => {});
+    await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);').catch(() => {});
+    await client.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL;').catch(() => {});
+
+    // User settings table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        alert_radius_km INTEGER DEFAULT 25,
+        blood_alerts BOOLEAN DEFAULT true,
+        missing_alerts BOOLEAN DEFAULT true,
+        fund_alerts BOOLEAN DEFAULT true,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
