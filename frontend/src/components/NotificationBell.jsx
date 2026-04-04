@@ -1,87 +1,64 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Check, CheckCheck, Heart, Search, HandCoins, AlertCircle } from 'lucide-react';
-import { notificationAPI } from '../lib/api';
-import { timeAgo } from '../lib/utils';
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Bell,
+  Heart,
+  Search,
+  HandCoins,
+  X,
+  Check,
+  Wifi,
+  WifiOff,
+} from 'lucide-react'
+import { useSocket } from '../context/SocketContext'
 
-const typeIcons = {
-  blood_request: { icon: Heart, color: 'text-red-500', bg: 'bg-red-100' },
-  blood_response: { icon: Heart, color: 'text-green-500', bg: 'bg-green-100' },
-  missing_sighting: { icon: Search, color: 'text-blue-500', bg: 'bg-blue-100' },
-  fund_donation: { icon: HandCoins, color: 'text-amber-500', bg: 'bg-amber-100' },
-  default: { icon: AlertCircle, color: 'text-gray-500', bg: 'bg-gray-100' },
-};
+const typeConfig = {
+  blood: { icon: Heart, color: 'text-red-500', bg: 'bg-red-50' },
+  missing: { icon: Search, color: 'text-blue-500', bg: 'bg-blue-50' },
+  fund: { icon: HandCoins, color: 'text-amber-500', bg: 'bg-amber-50' },
+}
+
+function timeAgoShort(date) {
+  const s = Math.floor((Date.now() - new Date(date)) / 1000)
+  if (s < 60) return 'Just now'
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
 
 export default function NotificationBell() {
-  const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const dropdownRef = useRef(null);
+  const {
+    notifications,
+    unreadCount,
+    clearNotifications,
+    connected,
+    notificationPermission,
+    requestNotificationPermission,
+  } = useSocket()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
 
-  // Poll for unread count every 10 seconds
-  useEffect(() => {
-    const fetchCount = async () => {
-      try {
-        const { data } = await notificationAPI.getUnreadCount();
-        if (data.success) setUnreadCount(data.data.count);
-      } catch { /* silent fail */ }
-    };
-    fetchCount();
-    const interval = setInterval(fetchCount, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Close dropdown on outside click
+  // Close on outside click
   useEffect(() => {
     const handleClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const loadNotifications = async () => {
-    setLoading(true);
-    try {
-      const { data } = await notificationAPI.getAll({ limit: 15 });
-      if (data.success) {
-        setNotifications(data.data.notifications);
-        setUnreadCount(data.data.unread);
-      }
-    } catch { /* silent fail */ }
-    setLoading(false);
-  };
-
-  const handleOpen = () => {
-    setOpen(!open);
-    if (!open) loadNotifications();
-  };
-
-  const handleMarkRead = async (id) => {
-    try {
-      await notificationAPI.markAsRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch { /* silent fail */ }
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await notificationAPI.markAllAsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      setUnreadCount(0);
-    } catch { /* silent fail */ }
-  };
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={ref}>
+      {/* Bell button */}
       <button
-        onClick={handleOpen}
-        className="relative p-2 rounded-xl text-text-secondary hover:bg-surface-hover transition-colors"
-        aria-label="Notifications"
+        onClick={() => {
+          setOpen(!open)
+          if (!open && unreadCount > 0) clearNotifications()
+        }}
+        className="relative p-2 rounded-xl text-text-secondary hover:bg-surface-hover transition-colors cursor-pointer"
+        title="Notifications"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -95,75 +72,115 @@ export default function NotificationBell() {
         )}
       </button>
 
+      {/* Dropdown */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-12 w-80 sm:w-96 max-h-[420px] bg-white rounded-2xl shadow-2xl border border-border overflow-hidden z-50"
+            className="absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl border border-border shadow-xl z-50 overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg">
-              <h3 className="font-heading font-bold text-sm text-text">Notifications</h3>
-              {unreadCount > 0 && (
-                <button
-                  onClick={handleMarkAllRead}
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <h3 className="font-heading font-bold text-text text-sm">
+                  Notifications
+                </h3>
+                <div
+                  className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${connected ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}
                 >
-                  <CheckCheck className="h-3 w-3" /> Mark all read
-                </button>
-              )}
+                  {connected ? (
+                    <Wifi className="h-2.5 w-2.5" />
+                  ) : (
+                    <WifiOff className="h-2.5 w-2.5" />
+                  )}
+                  {connected ? 'Live' : 'Offline'}
+                </div>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4 text-text-muted" />
+              </button>
             </div>
 
-            {/* List */}
-            <div className="overflow-y-auto max-h-[350px]">
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin h-6 w-6 border-2 border-border border-t-primary rounded-full" />
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className="text-center py-8">
+            {/* Notifications List */}
+            <div className="max-h-80 overflow-y-auto">
+              {notificationPermission !== 'granted' &&
+                notificationPermission !== 'unsupported' && (
+                  <div className="px-4 py-3 border-b border-border bg-blue-50/70">
+                    <p className="text-xs text-blue-700 mb-2">
+                      Enable browser notifications to receive alerts even when
+                      this tab is in background.
+                    </p>
+                    <button
+                      onClick={requestNotificationPermission}
+                      className="text-xs font-semibold text-blue-700 hover:text-blue-900"
+                    >
+                      Enable Notifications
+                    </button>
+                  </div>
+                )}
+
+              {notifications.length === 0 ? (
+                <div className="py-12 text-center">
                   <Bell className="h-8 w-8 text-text-muted mx-auto mb-2" />
-                  <p className="text-sm text-text-muted">No notifications yet</p>
+                  <p className="text-sm text-text-muted">
+                    No notifications yet
+                  </p>
+                  <p className="text-xs text-text-muted mt-1">
+                    Actions will appear here in real-time
+                  </p>
                 </div>
               ) : (
-                notifications.map((notif) => {
-                  const { icon: Icon, color, bg } = typeIcons[notif.type] || typeIcons.default;
+                notifications.slice(0, 20).map((n) => {
+                  const config = typeConfig[n.type] || typeConfig.blood
+                  const Icon = config.icon
                   return (
                     <div
-                      key={notif.id}
-                      className={`flex items-start gap-3 px-4 py-3 border-b border-border/50 hover:bg-surface-hover transition-colors cursor-pointer ${
-                        !notif.is_read ? 'bg-primary/[0.03]' : ''
-                      }`}
-                      onClick={() => !notif.is_read && handleMarkRead(notif.id)}
+                      key={n.id}
+                      className={`flex items-start gap-3 px-4 py-3 border-b border-border/50 hover:bg-surface-hover transition-colors ${!n.read ? 'bg-primary/[0.03]' : ''}`}
                     >
-                      <div className={`p-2 rounded-xl ${bg} flex-shrink-0 mt-0.5`}>
-                        <Icon className={`h-4 w-4 ${color}`} />
+                      <div
+                        className={`p-1.5 rounded-lg ${config.bg} flex-shrink-0 mt-0.5`}
+                      >
+                        <Icon className={`h-3.5 w-3.5 ${config.color}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${!notif.is_read ? 'font-semibold text-text' : 'text-text-secondary'}`}>
-                          {notif.title}
-                        </p>
-                        <p className="text-xs text-text-muted mt-0.5 line-clamp-2">
-                          {notif.message}
+                        <p className="text-sm text-text leading-snug">
+                          {n.message}
                         </p>
                         <p className="text-[11px] text-text-muted mt-1">
-                          {timeAgo(notif.created_at)}
+                          {timeAgoShort(n.time)}
                         </p>
                       </div>
-                      {!notif.is_read && (
+                      {!n.read && (
                         <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
                       )}
                     </div>
-                  );
+                  )
                 })
               )}
             </div>
+
+            {/* Footer */}
+            {notifications.length > 0 && (
+              <div className="px-4 py-2 border-t border-border bg-surface-hover/50">
+                <button
+                  onClick={clearNotifications}
+                  className="flex items-center gap-1.5 text-xs text-primary font-medium hover:text-primary-dark cursor-pointer"
+                >
+                  <Check className="h-3 w-3" />
+                  Mark all as read
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
     </div>
-  );
+  )
 }
