@@ -132,23 +132,27 @@ const getUserStats = async (userId) => {
  * Get community-wide analytics for dashboard cards
  */
 const getCommunityStats = async () => {
-  const [bloodDonations, fundsRaised, missingReports, campaignsCreated] =
-    await Promise.all([
-      query(
-        "SELECT COUNT(*)::int AS total FROM blood_responses WHERE status = 'completed'"
-      ),
-      query(
-        "SELECT COALESCE(SUM(amount), 0)::numeric AS total FROM fund_transactions WHERE payment_status = 'success'"
-      ),
-      query('SELECT COUNT(*)::int AS total FROM missing_persons'),
-      query('SELECT COUNT(*)::int AS total FROM fund_campaigns'),
-    ])
+  const stats = await query(`
+    SELECT
+      (SELECT COUNT(*)::int FROM blood_responses WHERE status = 'completed') AS blood_donations,
+      (SELECT COALESCE(SUM(amount), 0)::numeric FROM fund_transactions WHERE payment_status = 'success') AS total_funds_raised,
+      (SELECT COUNT(*)::int FROM missing_persons) AS missing_reports,
+      (SELECT COUNT(*)::int FROM fund_campaigns) AS campaigns_created,
+      (
+        SELECT COUNT(*)::int
+        FROM reports
+        WHERE status IN ('pending', 'reviewed')
+      ) AS active_reports
+  `)
+
+  const row = stats.rows[0] || {}
 
   return {
-    blood_donations: parseInt(bloodDonations.rows[0].total),
-    total_funds_raised: parseFloat(fundsRaised.rows[0].total),
-    missing_reports: parseInt(missingReports.rows[0].total),
-    campaigns_created: parseInt(campaignsCreated.rows[0].total),
+    blood_donations: parseInt(row.blood_donations || 0),
+    total_funds_raised: parseFloat(row.total_funds_raised || 0),
+    missing_reports: parseInt(row.missing_reports || 0),
+    campaigns_created: parseInt(row.campaigns_created || 0),
+    active_reports: parseInt(row.active_reports || 0),
   }
 }
 

@@ -141,6 +141,7 @@ export const missingAPI = {
 export const reportAPI = {
   create: (data) => api.post('/report/create', data),
   list: (params) => api.get('/report/list', { params }),
+  getActiveCount: () => api.get('/report/active-count'),
 }
 
 // ============================================

@@ -1,14 +1,26 @@
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Heart, HandCoins, Search, MapPin, Shield, Users, Zap, ChevronRight, ArrowRight } from 'lucide-react';
-import { Button } from '../components/ui';
+import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import {
+  Heart,
+  HandCoins,
+  Search,
+  MapPin,
+  Download,
+  Smartphone,
+  Shield,
+  Users,
+  Zap,
+  ChevronRight,
+  ArrowRight,
+} from 'lucide-react'
+import { Button } from '../components/ui'
 
 const stats = [
-  { value: '10K+', label: 'Lives Saved' },
-  { value: '50K+', label: 'Active Donors' },
-  { value: '₹2Cr+', label: 'Funds Raised' },
-  { value: '500+', label: 'Reunited Families' },
-];
+  { value: '1.9M+', label: 'Annual Blood Unit Gap (Est.)' },
+  { value: '55M+', label: 'People Facing Health-Cost Distress/Year' },
+  { value: '4.5L+', label: 'Missing Person Cases Reported/Year' },
+  { value: '1.7L+', label: 'Road Crash Deaths/Year' },
+]
 
 const features = [
   {
@@ -39,15 +51,19 @@ const features = [
     color: 'from-green-500 to-emerald-600',
     link: '/info/map',
   },
-];
+]
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.6 },
-};
+}
+
+const APP_DOWNLOAD_URL = 'https://profiles.strangy.ashparx.com/apk/sahyog.apk'
 
 export default function Landing() {
+  const hasAppDownloadLink = APP_DOWNLOAD_URL.trim().length > 0
+
   return (
     <div>
       {/* ════════════════════ HERO ════════════════════ */}
@@ -60,8 +76,7 @@ export default function Landing() {
           <div className="text-center max-w-4xl mx-auto">
             <motion.div {...fadeUp}>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-8">
-                <Zap className="h-4 w-4" />
-                AI-Powered Emergency Network
+                <Zap className="h-4 w-4" />A Unified Emergency & Trust Network
               </div>
             </motion.div>
             <motion.h1
@@ -70,16 +85,15 @@ export default function Landing() {
               className="font-heading text-5xl sm:text-6xl lg:text-7xl font-extrabold text-text leading-tight"
             >
               When Every Second
-              <span className="block gradient-text">
-                Counts, Trust SAHYOG
-              </span>
+              <span className="block gradient-text">Counts, Trust SAHYOG</span>
             </motion.h1>
             <motion.p
               {...fadeUp}
               transition={{ delay: 0.2, duration: 0.6 }}
               className="mt-6 text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto leading-relaxed"
             >
-              A unified platform connecting people in crisis with those who can help — blood, funds, and search support in real time.
+              A unified platform connecting people in crisis with those who can
+              help — blood, funds, and search support in real time.
             </motion.p>
             <motion.div
               {...fadeUp}
@@ -98,6 +112,26 @@ export default function Landing() {
                   View Live Map
                 </Button>
               </Link>
+              <a
+                href={hasAppDownloadLink ? APP_DOWNLOAD_URL : undefined}
+                target={hasAppDownloadLink ? '_blank' : undefined}
+                rel={hasAppDownloadLink ? 'noopener noreferrer' : undefined}
+              >
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  disabled={!hasAppDownloadLink}
+                  className="text-base"
+                  title={
+                    hasAppDownloadLink
+                      ? 'Download SAHYOG App'
+                      : 'Add app link to enable download'
+                  }
+                >
+                  <Download className="h-5 w-5" />
+                  Download App
+                </Button>
+              </a>
             </motion.div>
           </div>
         </div>
@@ -119,10 +153,65 @@ export default function Landing() {
                 <div className="text-3xl sm:text-4xl font-extrabold font-heading gradient-text">
                   {stat.value}
                 </div>
-                <div className="text-sm text-text-secondary mt-1">{stat.label}</div>
+                <div className="text-sm text-text-secondary mt-1">
+                  {stat.label}
+                </div>
               </motion.div>
             ))}
           </div>
+          <p className="text-sm sm:text-base text-text-muted text-center mt-6">
+            India's recent trends: blood donation gaps remain critical, missing
+            person reports stay high, and fraudulent donation campaigns are
+            rising with digital fundraising.
+          </p>
+        </div>
+      </section>
+
+      {/* ════════════════════ APP DOWNLOAD ════════════════════ */}
+      <section className="py-14 bg-gradient-to-r from-secondary/10 via-primary/10 to-accent/10 border-y border-border">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="rounded-3xl bg-white/90 backdrop-blur-md border border-white shadow-xl p-6 sm:p-8"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-semibold mb-3">
+                  <Smartphone className="h-3.5 w-3.5" />
+                  Mobile App
+                </div>
+                <h3 className="font-heading text-2xl sm:text-3xl font-bold text-text">
+                  Download The SAHYOG App
+                </h3>
+                <p className="text-text-secondary mt-2 max-w-2xl">
+                  Get instant emergency alerts, live map updates, and faster
+                  crisis response directly from your phone.
+                </p>
+              </div>
+
+              <a
+                href={hasAppDownloadLink ? APP_DOWNLOAD_URL : undefined}
+                target={hasAppDownloadLink ? '_blank' : undefined}
+                rel={hasAppDownloadLink ? 'noopener noreferrer' : undefined}
+              >
+                <Button
+                  size="lg"
+                  disabled={!hasAppDownloadLink}
+                  className="text-base px-8 whitespace-nowrap"
+                  title={
+                    hasAppDownloadLink
+                      ? 'Download SAHYOG App'
+                      : 'Add app link to enable download'
+                  }
+                >
+                  <Download className="h-5 w-5" />
+                  Download For Android/iOS
+                </Button>
+              </a>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -136,16 +225,18 @@ export default function Landing() {
             className="text-center mb-16"
           >
             <h2 className="font-heading text-3xl sm:text-4xl font-bold text-text">
-              Four Pillars of <span className="text-primary">Emergency Response</span>
+              Four Pillars of{' '}
+              <span className="text-primary">Emergency Response</span>
             </h2>
             <p className="mt-4 text-text-secondary max-w-xl mx-auto">
-              A comprehensive platform designed to save lives, reunite families, and build trust.
+              A comprehensive platform designed to save lives, reunite families,
+              and build trust.
             </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, i) => {
-              const Icon = feature.icon;
+              const Icon = feature.icon
               return (
                 <motion.div
                   key={feature.title}
@@ -154,18 +245,27 @@ export default function Landing() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.5 }}
                 >
-                  <Link to={feature.link} className="block glass-card p-6 h-full group">
-                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                  <Link
+                    to={feature.link}
+                    className="block glass-card p-6 h-full group"
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
+                    >
                       <Icon className="h-6 w-6 text-white" />
                     </div>
-                    <h3 className="font-heading text-lg font-bold text-text mb-2">{feature.title}</h3>
-                    <p className="text-sm text-text-secondary leading-relaxed">{feature.desc}</p>
+                    <h3 className="font-heading text-lg font-bold text-text mb-2">
+                      {feature.title}
+                    </h3>
+                    <p className="text-sm text-text-secondary leading-relaxed">
+                      {feature.desc}
+                    </p>
                     <div className="flex items-center text-primary text-sm font-semibold mt-4 group-hover:gap-2 transition-all">
                       Learn more <ChevronRight className="h-4 w-4" />
                     </div>
                   </Link>
                 </motion.div>
-              );
+              )
             })}
           </div>
         </div>
@@ -189,8 +289,14 @@ export default function Landing() {
                 <span className="text-secondary">Verified by Community</span>
               </h2>
               <p className="text-text-secondary leading-relaxed mb-8">
-                Every user earns a dynamic trust score based on their contributions, verification status,
-                and community feedback. This ensures every donation reaches the right hands.
+                Every user earns a dynamic trust score based on their
+                contributions, verification status, and community feedback. This
+                ensures every donation reaches the right hands.
+              </p>
+              <p className="text-sm text-text-muted mb-6">
+                Scoring logic: base 50 + verified profile (+20) + completed help
+                actions (+2 to +5 each) + positive community reliability (+0 to
+                +15) - flagged abuse/false reports (-10 to -30).
               </p>
               <div className="space-y-4">
                 {[
@@ -202,7 +308,9 @@ export default function Landing() {
                     <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center">
                       <item.icon className="h-4 w-4 text-secondary" />
                     </div>
-                    <span className="text-sm font-medium text-text">{item.text}</span>
+                    <span className="text-sm font-medium text-text">
+                      {item.text}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -219,18 +327,24 @@ export default function Landing() {
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-secondary to-secondary-dark flex items-center justify-center mx-auto mb-4">
                     <Users className="h-10 w-10 text-white" />
                   </div>
-                  <h3 className="font-heading text-xl font-bold text-text">Trust Score</h3>
-                  <div className="text-5xl font-extrabold text-secondary mt-2">87/100</div>
+                  <h3 className="font-heading text-xl font-bold text-text">
+                    Trust Score
+                  </h3>
+                  <div className="text-5xl font-extrabold text-secondary mt-2">
+                    93/100
+                  </div>
                   <div className="w-full bg-gray-200 rounded-full h-3 mt-4">
                     <motion.div
                       initial={{ width: 0 }}
-                      whileInView={{ width: '87%' }}
+                      whileInView={{ width: '93%' }}
                       viewport={{ once: true }}
                       transition={{ duration: 1.5, ease: 'easeOut' }}
                       className="bg-gradient-to-r from-secondary to-secondary-light h-3 rounded-full"
                     />
                   </div>
-                  <p className="text-sm text-text-secondary mt-3">Verified Donor · 12 Contributions</p>
+                  <p className="text-sm text-text-secondary mt-3">
+                    Verified Donor · 17 Contributions · 0 Fraud Flags
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -254,10 +368,15 @@ export default function Landing() {
               Join India's Largest Emergency Trust Network
             </h2>
             <p className="text-white/80 text-lg mb-10 max-w-xl mx-auto">
-              Be the change. Register as a donor, start a campaign, or help find someone's missing loved one.
+              Be the change. Register as a donor, start a campaign, or help find
+              someone's missing loved one.
             </p>
             <Link to="/register">
-              <Button variant="outline" size="lg" className="!border-white !text-white hover:!bg-white hover:!text-primary text-base">
+              <Button
+                variant="outline"
+                size="lg"
+                className="!border-white !text-white hover:!bg-white hover:!text-primary text-base"
+              >
                 Join SAHYOG Now
                 <ArrowRight className="h-5 w-5" />
               </Button>
@@ -266,5 +385,5 @@ export default function Landing() {
         </div>
       </section>
     </div>
-  );
+  )
 }

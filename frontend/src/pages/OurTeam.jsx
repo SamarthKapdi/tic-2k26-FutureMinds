@@ -1,50 +1,46 @@
 import { motion } from 'framer-motion'
-import {
-  Globe,
-  Mail,
-  Link2,
-  ExternalLink,
-  Code,
-  Palette,
-  Brain,
-  Megaphone,
-} from 'lucide-react'
+import { Link2, Code, Palette, Brain, Megaphone } from 'lucide-react'
 
 const teamMembers = [
   {
     name: 'Samarth Kapdi',
     role: 'Team Lead & UI/UX Designer',
     img: '/WhatsApp%20Image%202026-04-04%20at%202.23.02%20PM.jpeg',
+    linkedin: 'https://www.linkedin.com/in/samarthkapdi/',
     icon: Code,
     accent: 'from-primary to-primary-dark',
-  },
-  {
-    name: 'Nikhil Soni',
-    role: 'Backend Lead',
-    img: '/WhatsApp%20Image%202026-04-04%20at%202.23.07%20PM.jpeg',
-    icon: Palette,
-    accent: 'from-secondary to-secondary-dark',
-  },
-  {
-    name: 'Aditya Kapse',
-    role: 'Research & Documentation',
-    img: '/WhatsApp%20Image%202026-04-04%20at%202.07.54%20PM.jpeg',
-    icon: Brain,
-    accent: 'from-accent to-amber-600',
-  },
-  {
-    name: 'Rohit Rajure',
-    role: 'QA & Testing',
-    img: '/WhatsApp%20Image%202026-04-04%20at%202.23.11%20PM.jpeg',
-    icon: Megaphone,
-    accent: 'from-success to-green-700',
   },
   {
     name: 'Ashish Parihar',
     role: 'Backend Developer & DevOps & System Architect',
     img: '/WhatsApp%20Image%202026-04-04%20at%202.36.56%20PM.jpeg',
+    linkedin: 'https://www.linkedin.com/in/ashish-parihar-96b2b83b1/',
     icon: Megaphone,
     accent: 'from-success to-green-700',
+  },
+  {
+    name: 'Nikhil Soni',
+    role: 'Backend Lead',
+    img: '/WhatsApp%20Image%202026-04-04%20at%202.23.07%20PM.jpeg',
+    linkedin: 'https://www.linkedin.com/in/nikhilsoni111/',
+    icon: Palette,
+    accent: 'from-secondary to-secondary-dark',
+  },
+  {
+    name: 'Rohit Rajure',
+    role: 'QA & Testing',
+    img: '/WhatsApp%20Image%202026-04-04%20at%202.23.11%20PM.jpeg',
+    linkedin: 'https://www.linkedin.com/in/rohit-rajure-bb9508302/',
+    icon: Megaphone,
+    accent: 'from-success to-green-700',
+  },
+  {
+    name: 'Aditya Kapse',
+    role: 'Research & Documentation',
+    img: '/WhatsApp%20Image%202026-04-04%20at%202.07.54%20PM.jpeg',
+    linkedin: 'https://www.linkedin.com/in/adityakapse1991/',
+    icon: Brain,
+    accent: 'from-accent to-amber-600',
   },
 ]
 
@@ -118,15 +114,16 @@ export default function OurTeam() {
 
                 {/* Social links */}
                 <div className="flex items-center justify-center gap-2">
-                  {[Link2, Globe, Mail].map((Icon, j) => (
-                    <button
-                      key={j}
-                      type="button"
-                      className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
-                    >
-                      <Icon className="w-4 h-4" />
-                    </button>
-                  ))}
+                  <a
+                    href={member.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${member.name} LinkedIn`}
+                    title="LinkedIn"
+                    className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-all"
+                  >
+                    <Link2 className="w-4 h-4" />
+                  </a>
                 </div>
               </div>
             </motion.div>

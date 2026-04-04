@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion as Motion, AnimatePresence } from 'framer-motion'
 import {
   Bell,
   Heart,
   Search,
   HandCoins,
+  AlertTriangle,
   X,
   Check,
   Wifi,
@@ -16,6 +17,11 @@ const typeConfig = {
   blood: { icon: Heart, color: 'text-red-500', bg: 'bg-red-50' },
   missing: { icon: Search, color: 'text-blue-500', bg: 'bg-blue-50' },
   fund: { icon: HandCoins, color: 'text-amber-500', bg: 'bg-amber-50' },
+  report: {
+    icon: AlertTriangle,
+    color: 'text-orange-500',
+    bg: 'bg-orange-50',
+  },
 }
 
 function timeAgoShort(date) {
@@ -62,20 +68,20 @@ export default function NotificationBell() {
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <motion.span
+          <Motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1"
           >
             {unreadCount > 9 ? '9+' : unreadCount}
-          </motion.span>
+          </Motion.span>
         )}
       </button>
 
       {/* Dropdown */}
       <AnimatePresence>
         {open && (
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -178,7 +184,7 @@ export default function NotificationBell() {
                 </button>
               </div>
             )}
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>

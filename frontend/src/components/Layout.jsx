@@ -406,10 +406,35 @@ export default function Layout({ children }) {
                 people in crisis with those who can help.
               </p>
               <div className="flex gap-3">
-                {[Globe, MessageSquare, Link2, Mail].map((Icon, i) => (
+                {[
+                  {
+                    Icon: Globe,
+                    href: 'https://sahyog.ashparx.com/',
+                    label: 'Website',
+                  },
+                  {
+                    Icon: MessageSquare,
+                    href: 'https://api.whatsapp.com/send/?phone=%2B917723811943&text&type=phone_number&app_absent=0',
+                    label: 'WhatsApp',
+                  },
+                  {
+                    Icon: Link2,
+                    href: 'https://sahyog.ashparx.com/',
+                    label: 'Project Link',
+                  },
+                  {
+                    Icon: Mail,
+                    href: 'mailto:samarthka48@gmail.com',
+                    label: 'Email',
+                  },
+                ].map(({ Icon, href, label }) => (
                   <a
-                    key={i}
-                    href="#"
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    title={label}
                     className="w-9 h-9 rounded-xl bg-surface-hover flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary/10 transition-all"
                   >
                     <Icon className="h-4 w-4" />

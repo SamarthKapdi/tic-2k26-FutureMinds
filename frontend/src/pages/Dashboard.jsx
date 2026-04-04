@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion as Motion } from 'framer-motion'
 import {
   Heart,
   HandCoins,
@@ -8,11 +8,12 @@ import {
   MapPin,
   Shield,
   TrendingUp,
+  AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import { StatCard, Card, Badge, Spinner } from '../components/ui'
-import { bloodAPI, fundAPI, missingAPI, userAPI } from '../lib/api'
+import { bloodAPI, fundAPI, missingAPI, reportAPI, userAPI } from '../lib/api'
 import { timeAgo, formatCurrency, getTrustScoreColor } from '../lib/utils'
 
 export default function Dashboard() {
@@ -26,18 +27,35 @@ export default function Dashboard() {
   )
   const [loading, setLoading] = useState(true)
 
+  const loadActiveReports = useCallback(async () => {
+    try {
+      const { data } = await reportAPI.getActiveCount()
+      const activeReports = data?.data?.active_reports || 0
+      setCommunityStats((prev) => ({
+        ...(prev || {}),
+        active_reports: activeReports,
+      }))
+    } catch (err) {
+      console.error('Active reports refresh error:', err)
+    }
+  }, [])
+
   const loadData = useCallback(async () => {
     try {
-      const [reqRes, campRes, missRes, profileRes] = await Promise.all([
-        bloodAPI.getRequests({ limit: 5 }),
-        fundAPI.listCampaigns({ limit: 5 }),
-        missingAPI.list({ limit: 5 }),
-        userAPI.getProfile(),
-      ])
+      const [reqRes, campRes, missRes, profileRes, activeReportsRes] =
+        await Promise.all([
+          bloodAPI.getRequests({ limit: 5 }),
+          fundAPI.listCampaigns({ limit: 5 }),
+          missingAPI.list({ limit: 5 }),
+          userAPI.getProfile(),
+          reportAPI.getActiveCount(),
+        ])
       setRecentRequests(reqRes.data?.data?.requests || [])
       setRecentCampaigns(campRes.data?.data?.campaigns || [])
       setRecentMissing(missRes.data?.data?.missing_persons || [])
-      setCommunityStats(profileRes.data?.data?.community_stats || null)
+      const baseStats = profileRes.data?.data?.community_stats || null
+      const activeReports = activeReportsRes.data?.data?.active_reports || 0
+      setCommunityStats({ ...(baseStats || {}), active_reports: activeReports })
     } catch (err) {
       console.error('Dashboard load error:', err)
     } finally {
@@ -49,20 +67,43 @@ export default function Dashboard() {
     loadData()
   }, [loadData])
 
+  // Keep active reports card fresh even if socket event is delayed.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadActiveReports()
+    }, 5000)
+
+    const refreshOnFocus = () => loadActiveReports()
+    window.addEventListener('focus', refreshOnFocus)
+
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', refreshOnFocus)
+    }
+  }, [loadActiveReports])
+
   // ── Real-time: refresh dashboard on any action ──
   useEffect(() => {
-    const unsub = on('dashboard:refresh', () => {
-      loadData()
-    })
-    return unsub
-  }, [on, loadData])
+    const unsubs = [
+      on('dashboard:refresh', () => {
+        loadData()
+      }),
+      on('report:refresh', () => {
+        loadActiveReports()
+      }),
+    ]
+
+    return () => {
+      unsubs.forEach((unsub) => unsub && unsub())
+    }
+  }, [on, loadData, loadActiveReports])
 
   if (loading) return <Spinner size="lg" />
 
   return (
     <div className="space-y-8">
       {/* Welcome */}
-      <motion.div
+      <Motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -85,7 +126,7 @@ export default function Dashboard() {
             {user?.is_verified && <Badge variant="success">Verified</Badge>}
           </div>
         </div>
-      </motion.div>
+      </Motion.div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -102,9 +143,9 @@ export default function Dashboard() {
           color="accent"
         />
         <StatCard
-          icon={Search}
-          label="Missing Reports"
-          value={communityStats?.missing_reports || 0}
+          icon={AlertTriangle}
+          label="Active Reports"
+          value={communityStats?.active_reports || 0}
           color="secondary"
         />
         <StatCard
@@ -144,14 +185,14 @@ export default function Dashboard() {
           },
         ].map((action) => (
           <Link key={action.to} to={action.to}>
-            <motion.div
+            <Motion.div
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               className={`p-5 rounded-2xl bg-gradient-to-br ${action.color} text-white flex items-center gap-4 cursor-pointer shadow-lg`}
             >
               <action.icon className="h-8 w-8" />
               <span className="font-semibold text-lg">{action.label}</span>
-            </motion.div>
+            </Motion.div>
           </Link>
         ))}
       </div>

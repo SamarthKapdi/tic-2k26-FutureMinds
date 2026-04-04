@@ -69,6 +69,7 @@ export function SocketProvider({ children }) {
           blood: 'Blood Alert',
           missing: 'Missing Person Alert',
           fund: 'Fundraising Alert',
+          report: 'Report Alert',
         }
 
         // Native browser notification for background tabs or minimized windows.
@@ -180,6 +181,15 @@ export function SocketProvider({ children }) {
       const msg = `💰 ${data.donor_name || 'Someone'} donated ₹${data.amount}!`
       toast.success(msg)
       addNotification('fund', msg, data)
+    })
+
+    s.on('report:new', (data) => {
+      const readableType = String(data.report_type || 'other')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+      const msg = `🚩 New report submitted: ${readableType}${data.reporter_name ? ` by ${data.reporter_name}` : ''}`
+      toast(msg, { icon: '🚩' })
+      addNotification('report', msg, data)
     })
 
     setSocket(s)
